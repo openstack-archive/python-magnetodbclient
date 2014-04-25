@@ -13,24 +13,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutronclient.common import _
+from magnetodbclient.common import _
 
 """
-Neutron base exception handling.
+MagnetoDB base exception handling.
 
 Exceptions are classified into three categories:
-* Exceptions corresponding to exceptions from neutron server:
+* Exceptions corresponding to exceptions from magnetodb server:
   This type of exceptions should inherit one of exceptions
   in HTTP_EXCEPTION_MAP.
 * Exceptions from client library:
-  This type of exceptions should inherit NeutronClientException.
+  This type of exceptions should inherit MagnetoDBClientException.
 * Exceptions from CLI code:
-  This type of exceptions should inherit NeutronCLIError.
+  This type of exceptions should inherit MagnetoDBCLIError.
 """
 
 
-class NeutronException(Exception):
-    """Base Neutron Exception
+class MagnetoDBException(Exception):
+    """Base MagnetoDB Exception
 
     To correctly use this class, inherit from it and define
     a 'message' property. That message will get printf'd
@@ -52,8 +52,8 @@ class NeutronException(Exception):
         return self._error_string
 
 
-class NeutronClientException(NeutronException):
-    """Base exception which exceptions from Neutron are mapped into.
+class MagnetoDBClientException(MagnetoDBException):
+    """Base exception which exceptions from MagnetoDB are mapped into.
 
     NOTE: on the client side, we use different exception types in order
     to allow client library users to handle server exceptions in try...except
@@ -63,39 +63,39 @@ class NeutronClientException(NeutronException):
     def __init__(self, message=None, **kwargs):
         if 'status_code' in kwargs:
             self.status_code = kwargs['status_code']
-        super(NeutronClientException, self).__init__(message, **kwargs)
+        super(MagnetoDBClientException, self).__init__(message, **kwargs)
 
 
-# Base exceptions from Neutron
+# Base exceptions from MagnetoDB
 
-class BadRequest(NeutronClientException):
+class BadRequest(MagnetoDBClientException):
     status_code = 400
 
 
-class Unauthorized(NeutronClientException):
+class Unauthorized(MagnetoDBClientException):
     status_code = 401
     message = _("Unauthorized: bad credentials.")
 
 
-class Forbidden(NeutronClientException):
+class Forbidden(MagnetoDBClientException):
     status_code = 403
     message = _("Forbidden: your credentials don't give you access to this "
                 "resource.")
 
 
-class NotFound(NeutronClientException):
+class NotFound(MagnetoDBClientException):
     status_code = 404
 
 
-class Conflict(NeutronClientException):
+class Conflict(MagnetoDBClientException):
     status_code = 409
 
 
-class InternalServerError(NeutronClientException):
+class InternalServerError(MagnetoDBClientException):
     status_code = 500
 
 
-class ServiceUnavailable(NeutronClientException):
+class ServiceUnavailable(MagnetoDBClientException):
     status_code = 503
 
 
@@ -110,69 +110,32 @@ HTTP_EXCEPTION_MAP = {
 }
 
 
-# Exceptions mapped to Neutron server exceptions
+# Exceptions mapped to MagnetoDB server exceptions
 # These are defined if a user of client library needs specific exception.
-# Exception name should be <Neutron Exception Name> + 'Client'
+# Exception name should be <MagnetoDB Exception Name> + 'Client'
 # e.g., NetworkNotFound -> NetworkNotFoundClient
-
-class NetworkNotFoundClient(NotFound):
-    pass
-
-
-class PortNotFoundClient(NotFound):
-    pass
-
-
-class StateInvalidClient(BadRequest):
-    pass
-
-
-class NetworkInUseClient(Conflict):
-    pass
-
-
-class PortInUseClient(Conflict):
-    pass
-
-
-class IpAddressInUseClient(Conflict):
-    pass
-
-
-# TODO(amotoki): It is unused in Neutron, but it is referred to
-# in Horizon code. After Horizon code is updated, remove it.
-class AlreadyAttachedClient(Conflict):
-    pass
-
-
-class IpAddressGenerationFailureClient(Conflict):
-    pass
-
-
-class ExternalIpAddressExhaustedClient(BadRequest):
-    pass
 
 
 # Exceptions from client library
 
 class NoAuthURLProvided(Unauthorized):
-    message = _("auth_url was not provided to the Neutron client")
+    message = _("auth_url was not provided to the MagnetoDB client")
 
 
-class EndpointNotFound(NeutronClientException):
+class EndpointNotFound(MagnetoDBClientException):
     message = _("Could not find Service or Region in Service Catalog.")
 
 
-class EndpointTypeNotFound(NeutronClientException):
+class EndpointTypeNotFound(MagnetoDBClientException):
     message = _("Could not find endpoint type %(type_)s in Service Catalog.")
 
 
-class AmbiguousEndpoints(NeutronClientException):
+class AmbiguousEndpoints(MagnetoDBClientException):
     message = _("Found more than one matching endpoint in Service Catalog: "
                 "%(matching_endpoints)")
 
 
-class RequestURITooLong(NeutronClientException):
+class RequestURITooLong(MagnetoDBClientException):
     """Raised when a request fails with HTTP error 414."""
 
     def __init__(self, **kwargs):
@@ -180,40 +143,40 @@ class RequestURITooLong(NeutronClientException):
         super(RequestURITooLong, self).__init__(**kwargs)
 
 
-class ConnectionFailed(NeutronClientException):
+class ConnectionFailed(MagnetoDBClientException):
     message = _("Connection to neutron failed: %(reason)s")
 
 
-class SslCertificateValidationError(NeutronClientException):
+class SslCertificateValidationError(MagnetoDBClientException):
     message = _("SSL certificate validation has failed: %(reason)s")
 
 
-class MalformedResponseBody(NeutronClientException):
+class MalformedResponseBody(MagnetoDBClientException):
     message = _("Malformed response body: %(reason)s")
 
 
-class InvalidContentType(NeutronClientException):
+class InvalidContentType(MagnetoDBClientException):
     message = _("Invalid content type %(content_type)s.")
 
 
 # Command line exceptions
 
-class NeutronCLIError(NeutronException):
+class MagnetoDBCLIError(MagnetoDBException):
     """Exception raised when command line parsing fails."""
     pass
 
 
-class CommandError(NeutronCLIError):
+class CommandError(MagnetoDBCLIError):
     pass
 
 
-class UnsupportedVersion(NeutronCLIError):
+class UnsupportedVersion(MagnetoDBCLIError):
     """Indicates that the user is trying to use an unsupported
        version of the API
     """
     pass
 
 
-class NeutronClientNoUniqueMatch(NeutronCLIError):
+class MagnetoDBClientNoUniqueMatch(MagnetoDBCLIError):
     message = _("Multiple %(resource)s matches found for name '%(name)s',"
                 " use an ID to be more specific.")
