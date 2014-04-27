@@ -20,7 +20,7 @@ import argparse
 import logging
 import re
 
-from cliff.formatters import table
+from cliff.formatters import table as cliff_table
 from cliff import lister
 from cliff import show
 
@@ -321,7 +321,7 @@ def update_dict(obj, dict, attributes):
             dict[attribute] = getattr(obj, attribute)
 
 
-class TableFormater(table.TableFormatter):
+class TableFormater(cliff_table.TableFormatter):
     """This class is used to keep consistency with prettytable 0.6.
 
     https://bugs.launchpad.net/python-magnetodbclient/+bug/1165962
@@ -339,14 +339,6 @@ class MagnetoDBCommand(command.OpenStackCommand):
     log = logging.getLogger(__name__ + '.MagnetoDBCommand')
     values_specs = []
     json_indent = None
-
-    def __init__(self, app, app_args):
-        super(MagnetoDBCommand, self).__init__(app, app_args)
-        # NOTE(markmcclain): This is no longer supported in cliff version 1.5.2
-        # see https://bugs.launchpad.net/python-neutronclient/+bug/1265926
-
-        #if hasattr(self, 'formatters'):
-            #self.formatters['table'] = TableFormater()
 
     def get_client(self):
         return self.app.client_manager.magnetodb
@@ -411,11 +403,7 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
         self.log.debug('get_data(%s)' % parsed_args)
         magnetodb_client = self.get_client()
         magnetodb_client.format = parsed_args.request_format
-        _extra_values = parse_args_to_dict(self.values_specs)
-        _merge_args(self, parsed_args, _extra_values,
-                    self.values_specs)
         body = self.args2body(parsed_args)
-        body[self.resource].update(_extra_values)
         obj_creator = getattr(magnetodb_client,
                               "create_%s" % self.resource)
         data = obj_creator(body)

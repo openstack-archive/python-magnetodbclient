@@ -31,6 +31,7 @@ from cliff import commandmanager
 from magnetodbclient.common import clientmanager
 from magnetodbclient.common import exceptions as exc
 from magnetodbclient.common import utils
+from magnetodbclient.magnetodb.v1 import table
 from magnetodbclient.openstack.common.gettextutils import _
 from magnetodbclient.openstack.common import strutils
 from magnetodbclient.version import __version__
@@ -67,7 +68,9 @@ def env(*_vars, **kwargs):
     return kwargs.get('default', '')
 
 
-COMMAND_V1 = {}
+COMMAND_V1 = {
+    'table-create': table.CreateTable,
+}
 
 COMMANDS = {'1': COMMAND_V1}
 
@@ -163,8 +166,8 @@ class MagnetoDBShell(app.App):
             '--os-auth-strategy', metavar='<auth-strategy>',
             default=env('OS_AUTH_STRATEGY', default='keystone'),
             help=_('Authentication strategy (Env: OS_AUTH_STRATEGY'
-            ', default keystone). For now, any other value will'
-            ' disable the authentication'))
+                   ', default keystone). For now, any other value will'
+                   ' disable the authentication'))
         parser.add_argument(
             '--os_auth_strategy',
             help=argparse.SUPPRESS)
@@ -476,7 +479,7 @@ class MagnetoDBShell(app.App):
 def main(argv=sys.argv[1:]):
     try:
         return MagnetoDBShell(MAGNETODB_API_VERSION).run(
-                map(strutils.safe_decode, argv))
+            map(strutils.safe_decode, argv))
     except exc.MagnetoDBClientException:
         return 1
     except Exception as e:

@@ -122,90 +122,74 @@ class Client(object):
         ...
 
     """
-    base_path = "/%(tenant_id)s/data"
-    tables_path = "/tables"
-    table_path = "/tables/%s"
+    base_path = "/data"
+    tables_path = base_path + "/tables"
+    table_path = base_path + "/tables/%s"
     put_item_path = "/put_item"
     delete_item_path = "/delete_item"
     get_item_path = "/get_item"
     query_path = "/query"
     scan_path = "/scan"
-    batch_write_item_path = "/batch_write_item"
-    batch_read_item_path = "/batch_read_item"
+    batch_write_item_path = base_path + "/batch_write_item"
+    batch_read_item_path = base_path + "/batch_read_item"
 
     # 8192 Is the default max URI len for eventlet.wsgi.server
     MAX_URI_LEN = 8192
 
-    def get_base_path(self, tenant_id):
-        return self.base_path % {'tenant_id': tenant_id}
-
-    def create_table(self, tenant_id, request_body):
+    def create_table(self, request_body):
         """Create table."""
-        url = self.get_base_path(tenant_id) + self.tables_path
+        url = self.tables_path
         return self.post(url, request_body)
 
-    def delete_table(self, tenant_id, table_name):
+    def delete_table(self, table_name):
         """Delete the specified table."""
-        url = self.get_base_path(tenant_id) + self.table_path % table_name
-        return self.delete(url)
+        return self.delete(self.table_path % table_name)
 
-    def list_tables(self, tenant_id):
+    def list_tables(self):
         """List tables."""
-        url = self.get_base_path(tenant_id) + self.tables_path
-        return self.get(url)
+        return self.get(self.tables_path)
 
-    def describe_table(self, tenant_id, table_name):
+    def describe_table(self, table_name):
         """Describe the specified table."""
-        url = self.get_base_path(tenant_id) + self.table_path % table_name
-        return self.get(url)
+        return self.get(self.table_path % table_name)
 
-    def put_item(self, tenant_id, table_name, request_body):
+    def put_item(self, table_name, request_body):
         """Put item to the specified table."""
-        url = self.get_base_path(tenant_id) + self.table_path % table_name
-        url += self.put_item_path
+        url = self.table_path % table_name + self.put_item_path
         return self.post(url, request_body)
 
-    def update_item(self, tenant_id, table_name, request_body):
+    def update_item(self, table_name, request_body):
         """Update item."""
-        url = self.get_base_path(tenant_id) + self.table_path % table_name
-        url += self.put_item_path
+        url = self.table_path % table_name + self.put_item_path
         return self.post(url, request_body)
 
-    def delete_item(self, tenant_id, table_name, request_body):
+    def delete_item(self, table_name, request_body):
         """Delete item."""
-        url = self.get_base_path(tenant_id) + self.table_path % table_name
-        url += self.delete_item_path
+        url = self.table_path % table_name + self.delete_item_path
         return self.post(url, request_body)
 
-    def get_item(self, tenant_id, table_name, request_body):
+    def get_item(self, table_name, request_body):
         """Get item."""
-        url = self.get_base_path(tenant_id) + self.table_path % table_name
-        url += self.get_item_path
+        url = self.table_path % table_name + self.get_item_path
         return self.post(url, request_body)
 
-    def query(self, tenant_id, table_name, request_body):
+    def query(self, table_name, request_body):
         """Query the specified table."""
-        url = self.get_base_path(tenant_id) + self.table_path % table_name
-        url += self.query_path
+        url = self.table_path % table_name + self.query_path
         return self.post(url, request_body)
 
-    def scan(self, tenant_id, table_name, request_body):
+    def scan(self, table_name, request_body):
         """Scan the specified table."""
-        url = self.get_base_path(tenant_id) + self.table_path % table_name
-        url += self.scan_path
+        url = self.table_path % table_name + self.scan_path
         return self.post(url, request_body)
 
-    def batch_write_item(self, tenant_id, request_items):
+    def batch_write_item(self, request_items):
         """Batch write item."""
-        url = self.get_base_path(tenant_id)
-        url += self.batch_write_item_path
-        return self.post(url, request_items)
+        return self.post(self.batch_write_item_path, request_items)
 
-    def batch_read_item(self, tenant_id, request_items):
+    def batch_read_item(self, request_items):
         """Batch read item."""
-        url = self.get_base_path(tenant_id)
-        url += self.batch_read_item_path
-        return self.post(url, request_items)
+        return self.post(self.batch_read_item_path, request_items)
 
     def __init__(self, **kwargs):
         """Initialize a new client for the MagnetoDB v1 API."""

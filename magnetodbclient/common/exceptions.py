@@ -113,7 +113,6 @@ HTTP_EXCEPTION_MAP = {
 # Exceptions mapped to MagnetoDB server exceptions
 # These are defined if a user of client library needs specific exception.
 # Exception name should be <MagnetoDB Exception Name> + 'Client'
-# e.g., NetworkNotFound -> NetworkNotFoundClient
 
 
 # Exceptions from client library
@@ -144,7 +143,7 @@ class RequestURITooLong(MagnetoDBClientException):
 
 
 class ConnectionFailed(MagnetoDBClientException):
-    message = _("Connection to neutron failed: %(reason)s")
+    message = _("Connection to magnetodb failed: %(reason)s")
 
 
 class SslCertificateValidationError(MagnetoDBClientException):
