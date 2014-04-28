@@ -125,11 +125,11 @@ class Client(object):
     base_path = "/data"
     tables_path = base_path + "/tables"
     table_path = base_path + "/tables/%s"
-    put_item_path = "/put_item"
-    delete_item_path = "/delete_item"
-    get_item_path = "/get_item"
-    query_path = "/query"
-    scan_path = "/scan"
+    put_item_path = table_path + "/put_item"
+    delete_item_path = table_path + "/delete_item"
+    get_item_path = table_path + "/get_item"
+    query_path = table_path + "/query"
+    scan_path = table_path + "/scan"
     batch_write_item_path = base_path + "/batch_write_item"
     batch_read_item_path = base_path + "/batch_read_item"
 
@@ -138,8 +138,7 @@ class Client(object):
 
     def create_table(self, request_body):
         """Create table."""
-        url = self.tables_path
-        return self.post(url, request_body)
+        return self.post(self.tables_path, request_body)
 
     def delete_table(self, table_name):
         """Delete the specified table."""
@@ -155,33 +154,27 @@ class Client(object):
 
     def put_item(self, table_name, request_body):
         """Put item to the specified table."""
-        url = self.table_path % table_name + self.put_item_path
-        return self.post(url, request_body)
+        return self.post(self.put_item_path % table_name, request_body)
 
     def update_item(self, table_name, request_body):
         """Update item."""
-        url = self.table_path % table_name + self.put_item_path
-        return self.post(url, request_body)
+        return self.post(self.put_item_path % table_name, request_body)
 
     def delete_item(self, table_name, request_body):
         """Delete item."""
-        url = self.table_path % table_name + self.delete_item_path
-        return self.post(url, request_body)
+        return self.post(self.delete_item_path % table_name, request_body)
 
     def get_item(self, table_name, request_body):
         """Get item."""
-        url = self.table_path % table_name + self.get_item_path
-        return self.post(url, request_body)
+        return self.post(self.get_item_path % table_name, request_body)
 
     def query(self, table_name, request_body):
         """Query the specified table."""
-        url = self.table_path % table_name + self.query_path
-        return self.post(url, request_body)
+        return self.post(self.query_path % table_name, request_body)
 
     def scan(self, table_name, request_body):
         """Scan the specified table."""
-        url = self.table_path % table_name + self.scan_path
-        return self.post(url, request_body)
+        return self.post(self.scan_path % table_name, request_body)
 
     def batch_write_item(self, request_items):
         """Batch write item."""

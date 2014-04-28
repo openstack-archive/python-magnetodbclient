@@ -200,3 +200,10 @@ def safe_encode_dict(data):
         return (k, _safe_encode_without_obj(v))
 
     return dict(map(_encode_item, data.items()))
+
+
+def get_file_contents(fname):
+    with open(fname, 'r') as f:
+        content = f.read()
+    body = json.loads(content)
+    return body

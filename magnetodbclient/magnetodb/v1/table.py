@@ -14,10 +14,13 @@
 #    under the License.
 #
 
+from __future__ import print_function
+
 import argparse
 import logging
 
 from magnetodbclient.common import exceptions
+from magnetodbclient.common import utils
 from magnetodbclient.magnetodb import v1 as magnetodb
 from magnetodbclient.openstack.common.gettextutils import _
 
@@ -33,9 +36,19 @@ class CreateTable(magnetodb.CreateCommand):
             '--description-file', metavar='FILE', dest='desc_file_name',
             help=_('File that contains table description to create'))
 
-    def args2body(self, parsed_args):
-        body = {'file': parsed_args.desc_file_name, }
-        return body
+    def get_data(self, parsed_args):
+        self.log.debug('get_data(%s)' % parsed_args)
+        magnetodb_client = self.get_client()
+        body = utils.get_file_contents(parsed_args.desc_file_name)
+        obj_creator = getattr(magnetodb_client, "create_%s" % self.resource)
+        data = obj_creator(body)
+        self.format_output_data(data)
+        info = self.resource in data and data[self.resource] or None
+        if info:
+            print(_('Created a new %s:') % self.resource, file=self.app.stdout)
+        else:
+            info = {'': ''}
+        return zip(*sorted(info.iteritems()))
 
 
 class DeleteTable(magnetodb.DeleteCommand):
