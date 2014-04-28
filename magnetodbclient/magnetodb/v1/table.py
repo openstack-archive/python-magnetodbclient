@@ -19,40 +19,65 @@ from __future__ import print_function
 import argparse
 import logging
 
+from cliff import show
+
 from magnetodbclient.common import exceptions
 from magnetodbclient.common import utils
 from magnetodbclient.magnetodb import v1 as magnetodb
 from magnetodbclient.openstack.common.gettextutils import _
 
 
-class CreateTable(magnetodb.CreateCommand):
+class CreateTable(magnetodb.MagnetoDBCommand, show.ShowOne):
     """Create a table for a given tenant."""
 
-    resource = 'table'
     log = logging.getLogger(__name__ + '.CreateTable')
+    resource = 'table'
 
     def add_known_arguments(self, parser):
         parser.add_argument(
-            '--description-file', metavar='FILE', dest='desc_file_name',
+            '--request-file', metavar='FILE', dest='request_file_name',
             help=_('File that contains table description to create'))
 
-    def get_data(self, parsed_args):
-        self.log.debug('get_data(%s)' % parsed_args)
+    def run(self, parsed_args):
+        self.log.debug('run(%s)', parsed_args)
         magnetodb_client = self.get_client()
-        body = utils.get_file_contents(parsed_args.desc_file_name)
-        obj_creator = getattr(magnetodb_client, "create_%s" % self.resource)
-        data = obj_creator(body)
-        self.format_output_data(data)
-        info = self.resource in data and data[self.resource] or None
-        if info:
-            print(_('Created a new %s:') % self.resource, file=self.app.stdout)
-        else:
-            info = {'': ''}
-        return zip(*sorted(info.iteritems()))
+        body = utils.get_file_contents(parsed_args.request_file_name)
+        magnetodb_client.create_table(body)
+        print((_('Created a new %(resource)s: %(name)s')
+               % {'name': body['table_name'],
+                  'resource': self.resource}),
+              file=self.app.stdout)
+        return
+#    def get_data(self, parsed_args):
+#        self.log.debug('get_data(%s)' % parsed_args)
+#        magnetodb_client = self.get_client()
+#        body = utils.get_file_contents(parsed_args.request_file_name)
+#        data = magnetodb_client.create_table(body)
+#        info = {'Table Name': data['table_description']['table_name']}
+#        print(_('Created a new %s:') % self.resource, file=self.app.stdout)
+#        return zip(*sorted(info.iteritems()))
 
 
-class DeleteTable(magnetodb.DeleteCommand):
+class DeleteTable(magnetodb.MagnetoDBCommand):
     """Delete a given table."""
 
     log = logging.getLogger(__name__ + '.DeleteTable')
     resource = 'table'
+
+    def get_parser(self, prog_name):
+        parser = super(DeleteTable, self).get_parser(prog_name)
+        help_str = _('Name of %s to delete')
+        parser.add_argument(
+            'name', metavar=self.resource.upper(),
+            help=help_str % self.resource)
+        return parser
+
+    def run(self, parsed_args):
+        self.log.debug('run(%s)', parsed_args)
+        magnetodb_client = self.get_client()
+        magnetodb_client.delete_table(parsed_args.name)
+        print((_('Deleted %(resource)s: %(name)s')
+               % {'name': parsed_args.name,
+                  'resource': self.resource}),
+              file=self.app.stdout)
+        return

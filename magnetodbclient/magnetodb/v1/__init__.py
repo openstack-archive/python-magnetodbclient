@@ -345,76 +345,15 @@ class MagnetoDBCommand(command.OpenStackCommand):
 
     def get_parser(self, prog_name):
         parser = super(MagnetoDBCommand, self).get_parser(prog_name)
-        parser.add_argument(
-            '--request-format',
-            help=_('The xml or json request format'),
-            default='json',
-            choices=['json', 'xml', ], )
-        parser.add_argument(
-            '--request_format',
-            choices=['json', 'xml', ],
-            help=argparse.SUPPRESS)
+        self.add_known_arguments(parser)
 
         return parser
-
-    def format_output_data(self, data):
-        # Modify data to make it more readable
-        if self.resource in data:
-            for k, v in data[self.resource].iteritems():
-                if isinstance(v, list):
-                    value = '\n'.join(utils.dumps(
-                        i, indent=self.json_indent) if isinstance(i, dict)
-                        else str(i) for i in v)
-                    data[self.resource][k] = value
-                elif isinstance(v, dict):
-                    value = utils.dumps(v, indent=self.json_indent)
-                    data[self.resource][k] = value
-                elif v is None:
-                    data[self.resource][k] = ''
 
     def add_known_arguments(self, parser):
         pass
 
     def args2body(self, parsed_args):
         return {}
-
-
-class CreateCommand(MagnetoDBCommand, show.ShowOne):
-    """Create a resource for a given tenant
-
-    """
-
-    api = 'keyvalue'
-    resource = None
-    log = None
-
-    def get_parser(self, prog_name):
-        parser = super(CreateCommand, self).get_parser(prog_name)
-        parser.add_argument(
-            '--tenant-id', metavar='TENANT_ID',
-            help=_('The owner tenant ID'), )
-        parser.add_argument(
-            '--tenant_id',
-            help=argparse.SUPPRESS)
-        self.add_known_arguments(parser)
-        return parser
-
-    def get_data(self, parsed_args):
-        self.log.debug('get_data(%s)' % parsed_args)
-        magnetodb_client = self.get_client()
-        magnetodb_client.format = parsed_args.request_format
-        body = self.args2body(parsed_args)
-        obj_creator = getattr(magnetodb_client,
-                              "create_%s" % self.resource)
-        data = obj_creator(body)
-        self.format_output_data(data)
-        info = self.resource in data and data[self.resource] or None
-        if info:
-            print(_('Created a new %s:') % self.resource,
-                  file=self.app.stdout)
-        else:
-            info = {'': ''}
-        return zip(*sorted(info.iteritems()))
 
 
 class UpdateCommand(MagnetoDBCommand):
@@ -460,47 +399,6 @@ class UpdateCommand(MagnetoDBCommand):
         obj_updator(_id, body)
         print((_('Updated %(resource)s: %(id)s') %
                {'id': parsed_args.id, 'resource': self.resource}),
-              file=self.app.stdout)
-        return
-
-
-class DeleteCommand(MagnetoDBCommand):
-    """Delete a given resource
-
-    """
-
-    api = 'keyvalue'
-    resource = None
-    log = None
-    allow_names = True
-
-    def get_parser(self, prog_name):
-        parser = super(DeleteCommand, self).get_parser(prog_name)
-        if self.allow_names:
-            help_str = _('ID or name of %s to delete')
-        else:
-            help_str = _('ID of %s to delete')
-        parser.add_argument(
-            'id', metavar=self.resource.upper(),
-            help=help_str % self.resource)
-        return parser
-
-    def run(self, parsed_args):
-        self.log.debug('run(%s)', parsed_args)
-        magnetodb_client = self.get_client()
-        magnetodb_client.format = parsed_args.request_format
-        obj_deleter = getattr(magnetodb_client,
-                              "delete_%s" % self.resource)
-        if self.allow_names:
-            _id = find_resourceid_by_name_or_id(magnetodb_client,
-                                                self.resource,
-                                                parsed_args.id)
-        else:
-            _id = parsed_args.id
-        obj_deleter(_id)
-        print((_('Deleted %(resource)s: %(id)s')
-               % {'id': parsed_args.id,
-                  'resource': self.resource}),
               file=self.app.stdout)
         return
 

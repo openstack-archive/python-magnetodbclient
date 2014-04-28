@@ -70,6 +70,7 @@ def env(*_vars, **kwargs):
 
 COMMAND_V1 = {
     'table-create': table.CreateTable,
+    'table-delete': table.DeleteTable,
 }
 
 COMMANDS = {'1': COMMAND_V1}
