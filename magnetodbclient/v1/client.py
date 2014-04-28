@@ -195,9 +195,7 @@ class Client(object):
         """Initialize a new client for the MagnetoDB v1 API."""
         super(Client, self).__init__()
         self.httpclient = client.HTTPClient(**kwargs)
-        self.version = '1'
         self.content_type = 'application/json'
-        self.action_prefix = "/v%s" % (self.version)
         self.retries = 0
         self.retry_interval = 1
 
@@ -221,7 +219,6 @@ class Client(object):
                 excess=uri_len - self.MAX_URI_LEN)
 
     def do_request(self, method, action, body=None, headers=None, params=None):
-        action = self.action_prefix + action
         if type(params) is dict and params:
             params = utils.safe_encode_dict(params)
             action += '?' + urllib.urlencode(params, doseq=1)
