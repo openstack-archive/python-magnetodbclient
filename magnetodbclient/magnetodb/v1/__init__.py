@@ -376,7 +376,6 @@ class UpdateCommand(MagnetoDBCommand):
     def run(self, parsed_args):
         self.log.debug('run(%s)', parsed_args)
         magnetodb_client = self.get_client()
-        magnetodb_client.format = parsed_args.request_format
         _extra_values = parse_args_to_dict(self.values_specs)
         _merge_args(self, parsed_args, _extra_values,
                     self.values_specs)
@@ -411,7 +410,6 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
     api = 'keyvalue'
     resource = None
     log = None
-    _formatters = {}
     list_columns = []
     unknown_parts_flag = True
     pagination_support = False
@@ -444,7 +442,6 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
     def retrieve_list(self, parsed_args):
         """Retrieve a list of resources from MagnetoDB server"""
         magnetodb_client = self.get_client()
-        magnetodb_client.format = parsed_args.request_format
         _extra_values = parse_args_to_dict(self.values_specs)
         _merge_args(self, parsed_args, _extra_values,
                     self.values_specs)
@@ -477,19 +474,14 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
 
     def setup_columns(self, info, parsed_args):
         _columns = len(info) > 0 and sorted(info[0].keys()) or []
-        if not _columns:
-            # clean the parsed_args.columns so that cliff will not break
-            parsed_args.columns = []
-        elif parsed_args.columns:
-            _columns = [x for x in parsed_args.columns if x in _columns]
-        elif self.list_columns:
-            # if no -c(s) by user and list_columns, we use columns in
-            # both list_columns and returned resource.
-            # Also Keep their order the same as in list_columns
-            _columns = [x for x in self.list_columns if x in _columns]
-        return (_columns, (utils.get_item_properties(
-            s, _columns, formatters=self._formatters, )
-            for s in info), )
+        if self.list_columns:
+            columns_dict = dict((k, v) for k, v in
+                                self.list_columns.iteritems() if k in _columns)
+            return (columns_dict.values(), (utils.get_item_properties(
+                    s, columns_dict.keys(), )
+                    for s in info), )
+        return (_columns, (utils.get_item_properties(s, _columns, )
+                for s in info), )
 
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)', parsed_args)
@@ -498,7 +490,7 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
         return self.setup_columns(data, parsed_args)
 
 
-class ShowCommand(MagnetoDBCommand, show.ShowOne):
+class DescribeCommand(MagnetoDBCommand, show.ShowOne):
     """Show information of a given resource
 
     """
@@ -506,39 +498,28 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
     api = 'keyvalue'
     resource = None
     log = None
-    allow_names = True
 
     def get_parser(self, prog_name):
-        parser = super(ShowCommand, self).get_parser(prog_name)
+        parser = super(DescribeCommand, self).get_parser(prog_name)
         add_show_list_common_argument(parser)
-        if self.allow_names:
-            help_str = _('ID or name of %s to look up')
-        else:
-            help_str = _('ID of %s to look up')
+        help_str = _('Name of %s to look up')
         parser.add_argument(
-            'id', metavar=self.resource.upper(),
+            'name', metavar=self.resource.upper(),
             help=help_str % self.resource)
         return parser
 
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)', parsed_args)
         magnetodb_client = self.get_client()
-        magnetodb_client.format = parsed_args.request_format
 
         params = {}
         if parsed_args.show_details:
             params = {'verbose': 'True'}
         if parsed_args.fields:
             params = {'fields': parsed_args.fields}
-        if self.allow_names:
-            _id = find_resourceid_by_name_or_id(magnetodb_client,
-                                                self.resource,
-                                                parsed_args.id)
-        else:
-            _id = parsed_args.id
 
-        obj_shower = getattr(magnetodb_client, "show_%s" % self.resource)
-        data = obj_shower(_id, **params)
+        obj_shower = getattr(magnetodb_client, "describe_%s" % self.resource)
+        data = obj_shower(parsed_args.name, **params)
         self.format_output_data(data)
         resource = data[self.resource]
         if self.resource in data:

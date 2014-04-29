@@ -81,3 +81,26 @@ class DeleteTable(magnetodb.MagnetoDBCommand):
                   'resource': self.resource}),
               file=self.app.stdout)
         return
+
+
+class ListTable(magnetodb.ListCommand):
+    """List tables that belong to a given tenant."""
+
+    resource = 'table'
+    log = logging.getLogger(__name__ + '.ListTable')
+    list_columns = {'href': 'Table Name'}
+    pagination_support = True
+    sorting_support = True
+
+
+class DescribeTable(magnetodb.DescribeCommand):
+    """Show information of a given table."""
+
+    resource = 'table'
+    log = logging.getLogger(__name__ + '.DescribeTable')
+
+    def format_output_data(self, data):
+        try:
+            del data[self.resource]['links']
+        except Exception:
+            pass
