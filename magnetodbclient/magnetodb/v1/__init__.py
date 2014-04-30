@@ -473,15 +473,15 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
         pass
 
     def setup_columns(self, info, parsed_args):
+        if not info:
+            info.append({})
+            for k in self.list_columns.keys():
+                info[0][k] = ''
         _columns = len(info) > 0 and sorted(info[0].keys()) or []
-        if self.list_columns:
-            columns_dict = dict((k, v) for k, v in
-                                self.list_columns.iteritems() if k in _columns)
-            return (columns_dict.values(), (utils.get_item_properties(
-                    s, columns_dict.keys(), )
-                    for s in info), )
-        return (_columns, (utils.get_item_properties(s, _columns, )
-                for s in info), )
+        columns_dict = dict((k, v) for k, v in
+                            self.list_columns.iteritems() if k in _columns)
+        return (columns_dict.values(), (utils.get_item_properties(
+                s, columns_dict.keys(), ) for s in info), )
 
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)', parsed_args)
@@ -507,22 +507,3 @@ class DescribeCommand(MagnetoDBCommand, show.ShowOne):
             'name', metavar=self.resource.upper(),
             help=help_str % self.resource)
         return parser
-
-    def get_data(self, parsed_args):
-        self.log.debug('get_data(%s)', parsed_args)
-        magnetodb_client = self.get_client()
-
-        params = {}
-        if parsed_args.show_details:
-            params = {'verbose': 'True'}
-        if parsed_args.fields:
-            params = {'fields': parsed_args.fields}
-
-        obj_shower = getattr(magnetodb_client, "describe_%s" % self.resource)
-        data = obj_shower(parsed_args.name, **params)
-        self.format_output_data(data)
-        resource = data[self.resource]
-        if self.resource in data:
-            return zip(*sorted(resource.iteritems()))
-        else:
-            return None

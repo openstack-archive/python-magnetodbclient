@@ -17,6 +17,7 @@
 from __future__ import print_function
 
 import argparse
+import json
 import logging
 
 from cliff import show
@@ -99,8 +100,13 @@ class DescribeTable(magnetodb.DescribeCommand):
     resource = 'table'
     log = logging.getLogger(__name__ + '.DescribeTable')
 
-    def format_output_data(self, data):
-        try:
-            del data[self.resource]['links']
-        except Exception:
-            pass
+    def run(self, parsed_args):
+        self.log.debug('run(%s)', parsed_args)
+        magnetodb_client = self.get_client()
+        body = magnetodb_client.describe_table(parsed_args.name)
+        print((_('Description of %(resource)s %(name)s:\n%(description)s')
+               % {'name': parsed_args.name,
+                  'resource': self.resource,
+                  'description': json.dumps(body, indent=4, sort_keys=True)}),
+              file=self.app.stdout)
+        return
