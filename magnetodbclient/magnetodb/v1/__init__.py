@@ -35,11 +35,7 @@ UUID_PATTERN = '-'.join([HEX_ELEM + '{8}', HEX_ELEM + '{4}',
                          HEX_ELEM + '{12}'])
 
 
-def _get_resource_plural(resource, client):
-    plurals = getattr(client, 'EXTED_PLURALS', [])
-    for k in plurals:
-        if plurals[k] == resource:
-            return k
+def _get_resource_plural(resource):
     return resource + 's'
 
 
@@ -176,17 +172,6 @@ def _process_previous_argument(current_arg, _value_number, current_type_str,
 def parse_args_to_dict(values_specs):
     '''It is used to analyze the extra command options to command.
 
-    Besides known options and arguments, our commands also support user to
-    put more options to the end of command line. For example,
-    list_nets -- --tag x y --key1 value1, where '-- --tag x y --key1 value1'
-    is extra options to our list_nets. This feature can support V1 API's
-    fields selection and filters. For example, to list tables which has name
-    'test4', we can have list_tables -- --name=test4.
-
-    value spec is: --key type=int|bool|... value. Type is one of Python
-    built-in types. By default, type is string. The key without value is
-    a bool option. Key with two values will be a list option.
-
     '''
 
     # values_specs for example: '-- --tag x y --key1 type=int value1'
@@ -322,10 +307,6 @@ def update_dict(obj, dict, attributes):
 
 
 class TableFormater(cliff_table.TableFormatter):
-    """This class is used to keep consistency with prettytable 0.6.
-
-    https://bugs.launchpad.net/python-magnetodbclient/+bug/1165962
-    """
     def emit_list(self, column_names, data, stdout, parsed_args):
         if column_names:
             super(TableFormater, self).emit_list(column_names, data, stdout,
@@ -346,14 +327,61 @@ class MagnetoDBCommand(command.OpenStackCommand):
     def get_parser(self, prog_name):
         parser = super(MagnetoDBCommand, self).get_parser(prog_name)
         self.add_known_arguments(parser)
-
         return parser
+
+    def format_output_data(self, resource):
+        # Modify data to make it more readable
+        for k, v in resource.iteritems():
+            if isinstance(v, list):
+                value = '\n'.join(utils.dumps(
+                    i, indent=self.json_indent) if isinstance(i, dict)
+                    else str(i) for i in v)
+                resource[k] = value
+            elif isinstance(v, dict):
+                value = utils.dumps(v, indent=self.json_indent)
+                resource[k] = value
+            elif v is None:
+                resource[k] = ''
 
     def add_known_arguments(self, parser):
         pass
 
     def args2body(self, parsed_args):
         return {}
+
+
+class CreateCommand(MagnetoDBCommand, show.ShowOne):
+    """Create a resource for a given tenant
+
+    """
+
+    api = 'keyvalue'
+    resource = None
+    log = None
+
+    def get_parser(self, prog_name):
+        parser = super(CreateCommand, self).get_parser(prog_name)
+        return parser
+
+    def get_data(self, parsed_args):
+        self.log.debug('get_data(%s)' % parsed_args)
+        magnetodb_client = self.get_client()
+        _extra_values = parse_args_to_dict(self.values_specs)
+        _merge_args(self, parsed_args, _extra_values,
+                    self.values_specs)
+        body = self.args2body(parsed_args)
+        body[self.resource].update(_extra_values)
+        obj_creator = getattr(magnetodb_client,
+                              "create_%s" % self.resource)
+        data = obj_creator(body)
+        self.format_output_data(data)
+        info = self.resource in data and data[self.resource] or None
+        if info:
+            print(_('Created a new %s:') % self.resource,
+                  file=self.app.stdout)
+        else:
+            info = {'': ''}
+        return zip(*sorted(info.iteritems()))
 
 
 class UpdateCommand(MagnetoDBCommand):
@@ -370,7 +398,6 @@ class UpdateCommand(MagnetoDBCommand):
         parser.add_argument(
             'id', metavar=self.resource.upper(),
             help=_('ID or name of %s to update') % self.resource)
-        self.add_known_arguments(parser)
         return parser
 
     def run(self, parsed_args):
@@ -402,6 +429,46 @@ class UpdateCommand(MagnetoDBCommand):
         return
 
 
+class DeleteCommand(MagnetoDBCommand):
+    """Delete a given resource
+
+    """
+
+    api = 'keyvalue'
+    resource = None
+    log = None
+    allow_names = True
+
+    def get_parser(self, prog_name):
+        parser = super(DeleteCommand, self).get_parser(prog_name)
+        if self.allow_names:
+            help_str = _('ID or name of %s to delete')
+        else:
+            help_str = _('ID of %s to delete')
+        parser.add_argument(
+            'id', metavar=self.resource.upper(),
+            help=help_str % self.resource)
+        return parser
+
+    def run(self, parsed_args):
+        self.log.debug('run(%s)', parsed_args)
+        magnetodb_client = self.get_client()
+        obj_deleter = getattr(magnetodb_client,
+                              "delete_%s" % self.resource)
+        if self.allow_names:
+            _id = find_resourceid_by_name_or_id(magnetodb_client,
+                                                self.resource,
+                                                parsed_args.id)
+        else:
+            _id = parsed_args.id
+        obj_deleter(_id)
+        print((_('Deleted %(resource)s: %(id)s')
+               % {'id': parsed_args.id,
+                  'resource': self.resource}),
+              file=self.app.stdout)
+        return
+
+
 class ListCommand(MagnetoDBCommand, lister.Lister):
     """List resources that belong to a given tenant
 
@@ -410,6 +477,7 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
     api = 'keyvalue'
     resource = None
     log = None
+    _formatters = {}
     list_columns = []
     unknown_parts_flag = True
     pagination_support = False
@@ -434,9 +502,15 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
         return search_opts
 
     def call_server(self, magnetodb_client, search_opts, parsed_args):
-        resource_plural = _get_resource_plural(self.resource, magnetodb_client)
-        obj_lister = getattr(magnetodb_client, "list_%s" % resource_plural)
+        obj_lister = getattr(magnetodb_client, self.method)
         data = obj_lister(**search_opts)
+        return data
+
+    def _get_resource(self, data):
+        collection = _get_resource_plural(self.resource_path[0])
+        data = data[collection]
+        for path in self.resource_path[1:]:
+            data = data[path]
         return data
 
     def retrieve_list(self, parsed_args):
@@ -464,8 +538,8 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
             if dirs:
                 search_opts.update({'sort_dir': dirs})
         data = self.call_server(magnetodb_client, search_opts, parsed_args)
-        collection = _get_resource_plural(self.resource, magnetodb_client)
-        return data.get(collection, [])
+        resource = self._get_resource(data)
+        return resource
 
     def extend_list(self, data, parsed_args):
         """Update a retrieved list.
@@ -473,15 +547,17 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
         pass
 
     def setup_columns(self, info, parsed_args):
-        if not info:
-            info.append({})
-            for k in self.list_columns.keys():
-                info[0][k] = ''
         _columns = len(info) > 0 and sorted(info[0].keys()) or []
-        columns_dict = dict((k, v) for k, v in
-                            self.list_columns.iteritems() if k in _columns)
-        return (columns_dict.values(), (utils.get_item_properties(
-                s, columns_dict.keys(), ) for s in info), )
+        if not _columns:
+            # clean the parsed_args.columns so that cliff will not break
+            parsed_args.columns = []
+        elif parsed_args.columns:
+            _columns = [x for x in parsed_args.columns if x in _columns]
+        elif self.list_columns:
+            _columns = self.list_columns
+        return (_columns, (utils.get_item_properties(
+            s, _columns, formatters=self._formatters, )
+            for s in info), )
 
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)', parsed_args)
@@ -490,20 +566,51 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
         return self.setup_columns(data, parsed_args)
 
 
-class DescribeCommand(MagnetoDBCommand, show.ShowOne):
+class ShowCommand(MagnetoDBCommand, show.ShowOne):
     """Show information of a given resource
 
     """
 
     api = 'keyvalue'
     resource = None
+    _formatters = {}
     log = None
 
     def get_parser(self, prog_name):
-        parser = super(DescribeCommand, self).get_parser(prog_name)
+        parser = super(ShowCommand, self).get_parser(prog_name)
         add_show_list_common_argument(parser)
-        help_str = _('Name of %s to look up')
-        parser.add_argument(
-            'name', metavar=self.resource.upper(),
-            help=help_str % self.resource)
         return parser
+
+    def _add_specific_args(parser):
+        pass
+
+    def exclude_rows(self, info):
+        for row in self.excluded_rows:
+            try:
+                del info[row]
+            except KeyError:
+                pass
+
+    def format_output_data(self, resource):
+        for k, v in resource.iteritems():
+            if k in self._formatters:
+                resource[k] = self._formatters[k](v)
+        super(ShowCommand, self).format_output_data(resource)
+
+    def _get_resource(self, data, parsed_args):
+        for path in self.resource_path:
+            data = data[path]
+        return data
+
+    def get_data(self, parsed_args):
+        self.log.debug('get_data(%s)', parsed_args)
+        magnetodb_client = self.get_client()
+
+        _name = parsed_args.name
+
+        obj_shower = getattr(magnetodb_client, self.method)
+        data = obj_shower(_name)
+        resource = self._get_resource(data, parsed_args)
+        self.format_output_data(resource)
+        self.exclude_rows(resource)
+        return zip(*sorted(resource.iteritems()))

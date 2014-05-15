@@ -72,7 +72,9 @@ COMMAND_V1 = {
     'table-create': table.CreateTable,
     'table-delete': table.DeleteTable,
     'table-list': table.ListTable,
-    'table-describe': table.DescribeTable,
+    'index-list': table.ListIndex,
+    'table-describe': table.ShowTable,
+    'index-describe': table.ShowIndex,
 }
 
 COMMANDS = {'1': COMMAND_V1}

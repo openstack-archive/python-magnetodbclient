@@ -16,97 +16,105 @@
 
 from __future__ import print_function
 
-import argparse
-import json
 import logging
 
-from cliff import show
-
 from magnetodbclient.common import exceptions
-from magnetodbclient.common import utils
-from magnetodbclient.magnetodb import v1 as magnetodb
+from magnetodbclient.magnetodb import v1 as magnetodbv1
 from magnetodbclient.openstack.common.gettextutils import _
 
 
-class CreateTable(magnetodb.MagnetoDBCommand, show.ShowOne):
-    """Create a table for a given tenant."""
+def _format_table_name(table):
+    try:
+        return table['href']
+    except Exception:
+        return ''
 
-    log = logging.getLogger(__name__ + '.CreateTable')
-    resource = 'table'
+
+def _get_lsi_names(indexes):
+    index_names = []
+    for index in indexes:
+        index_names.append(index['index_name'])
+    return index_names
+
+
+class ListTable(magnetodbv1.ListCommand):
+    """List tables that belong to a given tenant."""
+
+    resource_path = ('table',)
+    method = 'list_tables'
+    log = logging.getLogger(__name__ + '.ListTable')
+    _formatters = {'Table Name': _format_table_name}
+    list_columns = ['Table Name']
+
+
+class ShowTable(magnetodbv1.ShowCommand):
+    """Show information of a given table."""
+
+    resource_path = ('table',)
+    method = 'describe_table'
+    excluded_rows = ('links',)
+    _formatters = {'local_secondary_indexes': _get_lsi_names}
+    log = logging.getLogger(__name__ + '.ShowTable')
 
     def add_known_arguments(self, parser):
         parser.add_argument(
-            '--request-file', metavar='FILE', dest='request_file_name',
-            help=_('File that contains table description to create'))
-
-    def run(self, parsed_args):
-        self.log.debug('run(%s)', parsed_args)
-        magnetodb_client = self.get_client()
-        body = utils.get_file_contents(parsed_args.request_file_name)
-        magnetodb_client.create_table(body)
-        print((_('Created a new %(resource)s: %(name)s')
-               % {'name': body['table_name'],
-                  'resource': self.resource}),
-              file=self.app.stdout)
-        return
-#    def get_data(self, parsed_args):
-#        self.log.debug('get_data(%s)' % parsed_args)
-#        magnetodb_client = self.get_client()
-#        body = utils.get_file_contents(parsed_args.request_file_name)
-#        data = magnetodb_client.create_table(body)
-#        info = {'Table Name': data['table_description']['table_name']}
-#        print(_('Created a new %s:') % self.resource, file=self.app.stdout)
-#        return zip(*sorted(info.iteritems()))
+            'name', metavar='TABLE_NAME',
+            help=_('Name of table to look up'))
 
 
-class DeleteTable(magnetodb.MagnetoDBCommand):
+class ListIndex(ShowTable):
+    """List indices of a given table."""
+
+    log = logging.getLogger(__name__ + '.ListIndex')
+
+    def take_action(self, parsed_args):
+        parsed_args.columns = ['local_secondary_indexes']
+        data = self.get_data(parsed_args)
+        return data
+
+
+class ShowIndex(ShowTable):
+    """Show information of a given index."""
+
+    resource_path = ('table', 'local_secondary_indexes')
+    log = logging.getLogger(__name__ + '.ShowIndex')
+
+    def _get_resource(self, data, parsed_args):
+        data = super(ShowIndex, self)._get_resource(data, parsed_args)
+        index_name = parsed_args.index_name
+        for index in data:
+            if index['index_name'] == parsed_args.index_name:
+                data = index
+                break
+        else:
+            msg = _('Error. Index "%s" is not found in table "%s"')
+            msg %= (index_name, parsed_args.name)
+            raise exceptions.MagnetoDBClientException(msg)
+        return data
+
+    def add_known_arguments(self, parser):
+        super(ShowIndex, self).add_known_arguments(parser)
+        parser.add_argument(
+            'index_name', metavar='INDEX_NAME',
+            help=_('Name of index to describe'))
+
+
+class CreateTable(magnetodbv1.CreateCommand):
+    """Create a table for a given tenant."""
+
+    resource = 'Table'
+    log = logging.getLogger(__name__ + '.CreateTable')
+
+    def args2body(self, parsed_args):
+        body = {'table': {
+            'name': parsed_args.name, }}
+        magnetodbv1.update_dict(parsed_args, body['table'],
+                                ['shared', 'tenant_id'])
+        return body
+
+
+class DeleteTable(magnetodbv1.DeleteCommand):
     """Delete a given table."""
 
     log = logging.getLogger(__name__ + '.DeleteTable')
     resource = 'table'
-
-    def get_parser(self, prog_name):
-        parser = super(DeleteTable, self).get_parser(prog_name)
-        help_str = _('Name of %s to delete')
-        parser.add_argument(
-            'name', metavar=self.resource.upper(),
-            help=help_str % self.resource)
-        return parser
-
-    def run(self, parsed_args):
-        self.log.debug('run(%s)', parsed_args)
-        magnetodb_client = self.get_client()
-        magnetodb_client.delete_table(parsed_args.name)
-        print((_('Deleted %(resource)s: %(name)s')
-               % {'name': parsed_args.name,
-                  'resource': self.resource}),
-              file=self.app.stdout)
-        return
-
-
-class ListTable(magnetodb.ListCommand):
-    """List tables that belong to a given tenant."""
-
-    resource = 'table'
-    log = logging.getLogger(__name__ + '.ListTable')
-    list_columns = {'href': 'Table Name'}
-    pagination_support = True
-    sorting_support = True
-
-
-class DescribeTable(magnetodb.DescribeCommand):
-    """Show information of a given table."""
-
-    resource = 'table'
-    log = logging.getLogger(__name__ + '.DescribeTable')
-
-    def run(self, parsed_args):
-        self.log.debug('run(%s)', parsed_args)
-        magnetodb_client = self.get_client()
-        body = magnetodb_client.describe_table(parsed_args.name)
-        print((_('Description of %(resource)s %(name)s:\n%(description)s')
-               % {'name': parsed_args.name,
-                  'resource': self.resource,
-                  'description': json.dumps(body, indent=4, sort_keys=True)}),
-              file=self.app.stdout)
-        return
