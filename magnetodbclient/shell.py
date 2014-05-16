@@ -31,6 +31,7 @@ from cliff import commandmanager
 from magnetodbclient.common import clientmanager
 from magnetodbclient.common import exceptions as exc
 from magnetodbclient.common import utils
+from magnetodbclient.magnetodb.v1 import item
 from magnetodbclient.magnetodb.v1 import table
 from magnetodbclient.openstack.common.gettextutils import _
 from magnetodbclient.openstack.common import strutils
@@ -75,6 +76,9 @@ COMMAND_V1 = {
     'index-list': table.ListIndex,
     'table-describe': table.ShowTable,
     'index-describe': table.ShowIndex,
+    'item-put': item.PutItem,
+    'item-get': item.GetItem,
+    'item-delete': item.DeleteItem,
 }
 
 COMMANDS = {'1': COMMAND_V1}

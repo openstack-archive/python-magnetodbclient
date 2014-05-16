@@ -50,7 +50,6 @@ class ListTable(magnetodbv1.ListCommand):
     def add_known_arguments(self, parser):
         parser.add_argument(
             '--limit',
-            type=int,
             help=_('A maximum number of the items to return'))
         parser.add_argument(
             '--start-table-name',

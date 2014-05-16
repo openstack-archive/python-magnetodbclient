@@ -319,6 +319,9 @@ class MagnetoDBCommand(command.OpenStackCommand):
     api = 'keyvalue'
     log = logging.getLogger(__name__ + '.MagnetoDBCommand')
     values_specs = []
+    excluded_rows = ()
+    _formatters = {}
+    resource_path = ()
     json_indent = None
 
     def get_client(self):
@@ -365,6 +368,7 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
     api = 'keyvalue'
     resource = None
     log = None
+    success_message = _('Created a new %s:')
 
     def get_parser(self, prog_name):
         parser = super(CreateCommand, self).get_parser(prog_name)
@@ -389,13 +393,16 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
                     self.values_specs)
         body = self.args2body(parsed_args)
         obj_creator = getattr(magnetodb_client, self.method)
-        data = obj_creator(body)
+        if parsed_args.name:
+            data = obj_creator(parsed_args.name, body)
+        else:
+            data = obj_creator(body)
         resource = self._get_resource(data)
         self.format_output_data(resource)
         self.exclude_rows(resource)
 
         if resource:
-            print(_('Created a new %s:') % self.resource,
+            print(self.success_message % self.resource,
                   file=self.app.stdout)
         else:
             resource = {'': ''}
@@ -486,7 +493,6 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
     api = 'keyvalue'
     resource = None
     log = None
-    _formatters = {}
     list_columns = []
     unknown_parts_flag = True
     pagination_support = False
@@ -582,7 +588,6 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
 
     api = 'keyvalue'
     resource = None
-    _formatters = {}
     log = None
 
     def get_parser(self, prog_name):
@@ -607,9 +612,16 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
 
         _name = parsed_args.name
 
+        body = self.args2body(parsed_args)
         obj_shower = getattr(magnetodb_client, self.method)
-        data = obj_shower(_name)
-        resource = self._get_resource(data, parsed_args)
-        self.format_output_data(resource)
-        self.exclude_rows(resource)
+        if body:
+            data = obj_shower(_name, body)
+        else:
+            data = obj_shower(_name)
+        if data:
+            resource = self._get_resource(data, parsed_args)
+            self.format_output_data(resource)
+            self.exclude_rows(resource)
+        else:
+            resource = {'': ''}
         return zip(*sorted(resource.iteritems()))
