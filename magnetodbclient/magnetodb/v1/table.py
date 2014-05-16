@@ -19,6 +19,7 @@ from __future__ import print_function
 import logging
 
 from magnetodbclient.common import exceptions
+from magnetodbclient.common import utils
 from magnetodbclient.magnetodb import v1 as magnetodbv1
 from magnetodbclient.openstack.common.gettextutils import _
 
@@ -50,6 +51,7 @@ class ListTable(magnetodbv1.ListCommand):
 class ShowTable(magnetodbv1.ShowCommand):
     """Show information of a given table."""
 
+    resource = 'table'
     resource_path = ('table',)
     method = 'describe_table'
     excluded_rows = ('links',)
@@ -57,14 +59,15 @@ class ShowTable(magnetodbv1.ShowCommand):
     log = logging.getLogger(__name__ + '.ShowTable')
 
     def add_known_arguments(self, parser):
+        help_str = _('Name of table to look up')
         parser.add_argument(
             'name', metavar='TABLE_NAME',
-            help=_('Name of table to look up'))
-
+            help=help_str)
 
 class ListIndex(ShowTable):
     """List indices of a given table."""
 
+    resource = 'index'
     log = logging.getLogger(__name__ + '.ListIndex')
 
     def take_action(self, parsed_args):
@@ -76,6 +79,7 @@ class ListIndex(ShowTable):
 class ShowIndex(ShowTable):
     """Show information of a given index."""
 
+    resource = 'index'
     resource_path = ('table', 'local_secondary_indexes')
     log = logging.getLogger(__name__ + '.ShowIndex')
 
@@ -102,15 +106,20 @@ class ShowIndex(ShowTable):
 class CreateTable(magnetodbv1.CreateCommand):
     """Create a table for a given tenant."""
 
-    resource = 'Table'
+    resource = 'table'
+    resource_path = ('table_description',)
+    method = 'create_table'
+    excluded_rows = ('links',)
+    _formatters = {'local_secondary_indexes': _get_lsi_names}
     log = logging.getLogger(__name__ + '.CreateTable')
 
+    def add_known_arguments(self, parser):
+        parser.add_argument(
+            '--request-file', metavar='FILE', dest='request_file_name',
+            help=_('File that contains table description to create'))
+
     def args2body(self, parsed_args):
-        body = {'table': {
-            'name': parsed_args.name, }}
-        magnetodbv1.update_dict(parsed_args, body['table'],
-                                ['shared', 'tenant_id'])
-        return body
+        return utils.get_file_contents(parsed_args.request_file_name)
 
 
 class DeleteTable(magnetodbv1.DeleteCommand):

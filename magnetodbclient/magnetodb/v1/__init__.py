@@ -343,6 +343,13 @@ class MagnetoDBCommand(command.OpenStackCommand):
             elif v is None:
                 resource[k] = ''
 
+    def exclude_rows(self, info):
+        for row in self.excluded_rows:
+            try:
+                del info[row]
+            except KeyError:
+                pass
+
     def add_known_arguments(self, parser):
         pass
 
@@ -363,6 +370,17 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
         parser = super(CreateCommand, self).get_parser(prog_name)
         return parser
 
+    def format_output_data(self, resource):
+        for k, v in resource.iteritems():
+            if k in self._formatters:
+                resource[k] = self._formatters[k](v)
+        super(CreateCommand, self).format_output_data(resource)
+
+    def _get_resource(self, data):
+        for path in self.resource_path:
+            data = data[path]
+        return data
+
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)' % parsed_args)
         magnetodb_client = self.get_client()
@@ -370,18 +388,18 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
         _merge_args(self, parsed_args, _extra_values,
                     self.values_specs)
         body = self.args2body(parsed_args)
-        body[self.resource].update(_extra_values)
-        obj_creator = getattr(magnetodb_client,
-                              "create_%s" % self.resource)
+        obj_creator = getattr(magnetodb_client, self.method)
         data = obj_creator(body)
-        self.format_output_data(data)
-        info = self.resource in data and data[self.resource] or None
-        if info:
+        resource = self._get_resource(data)
+        self.format_output_data(resource)
+        self.exclude_rows(resource)
+
+        if resource:
             print(_('Created a new %s:') % self.resource,
                   file=self.app.stdout)
         else:
-            info = {'': ''}
-        return zip(*sorted(info.iteritems()))
+            resource = {'': ''}
+        return zip(*sorted(resource.iteritems()))
 
 
 class UpdateCommand(MagnetoDBCommand):
@@ -437,16 +455,12 @@ class DeleteCommand(MagnetoDBCommand):
     api = 'keyvalue'
     resource = None
     log = None
-    allow_names = True
 
     def get_parser(self, prog_name):
         parser = super(DeleteCommand, self).get_parser(prog_name)
-        if self.allow_names:
-            help_str = _('ID or name of %s to delete')
-        else:
-            help_str = _('ID of %s to delete')
+        help_str = _('Name of %s to delete')
         parser.add_argument(
-            'id', metavar=self.resource.upper(),
+            'name', metavar=self.resource.upper(),
             help=help_str % self.resource)
         return parser
 
@@ -455,15 +469,10 @@ class DeleteCommand(MagnetoDBCommand):
         magnetodb_client = self.get_client()
         obj_deleter = getattr(magnetodb_client,
                               "delete_%s" % self.resource)
-        if self.allow_names:
-            _id = find_resourceid_by_name_or_id(magnetodb_client,
-                                                self.resource,
-                                                parsed_args.id)
-        else:
-            _id = parsed_args.id
-        obj_deleter(_id)
-        print((_('Deleted %(resource)s: %(id)s')
-               % {'id': parsed_args.id,
+        _name = parsed_args.name
+        obj_deleter(_name)
+        print((_('Deleted %(resource)s: %(name)s')
+               % {'name': _name,
                   'resource': self.resource}),
               file=self.app.stdout)
         return
@@ -583,13 +592,6 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
 
     def _add_specific_args(parser):
         pass
-
-    def exclude_rows(self, info):
-        for row in self.excluded_rows:
-            try:
-                del info[row]
-            except KeyError:
-                pass
 
     def format_output_data(self, resource):
         for k, v in resource.iteritems():
