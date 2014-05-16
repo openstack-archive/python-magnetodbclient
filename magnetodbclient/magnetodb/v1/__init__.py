@@ -590,9 +590,6 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
         add_show_list_common_argument(parser)
         return parser
 
-    def _add_specific_args(parser):
-        pass
-
     def format_output_data(self, resource):
         for k, v in resource.iteritems():
             if k in self._formatters:

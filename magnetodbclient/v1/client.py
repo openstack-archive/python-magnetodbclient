@@ -144,9 +144,9 @@ class Client(object):
         """Delete the specified table."""
         return self.delete(self.table_path % table_name)
 
-    def list_tables(self):
+    def list_tables(self, **params):
         """List tables."""
-        return self.get(self.tables_path)
+        return self.get(self.tables_path, params=params)
 
     def describe_table(self, table_name):
         """Describe the specified table."""

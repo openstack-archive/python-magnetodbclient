@@ -47,6 +47,25 @@ class ListTable(magnetodbv1.ListCommand):
     _formatters = {'Table Name': _format_table_name}
     list_columns = ['Table Name']
 
+    def add_known_arguments(self, parser):
+        parser.add_argument(
+            '--limit',
+            type=int,
+            help=_('A maximum number of the items to return'))
+        parser.add_argument(
+            '--start-table-name',
+            help=_('The first table name that this operation will evaluate.'))
+
+    def args2search_opts(self, parsed_args):
+        search_opts = super(ListTable, self).args2search_opts(parsed_args)
+        limit = parsed_args.limit
+        start_table_name = parsed_args.start_table_name
+        if parsed_args.limit:
+            search_opts.update({'limit': limit})
+        if parsed_args.start_table_name:
+            search_opts.update({'start_table_name': start_table_name})
+        return search_opts
+
 
 class ShowTable(magnetodbv1.ShowCommand):
     """Show information of a given table."""
@@ -63,6 +82,7 @@ class ShowTable(magnetodbv1.ShowCommand):
         parser.add_argument(
             'name', metavar='TABLE_NAME',
             help=help_str)
+
 
 class ListIndex(ShowTable):
     """List indices of a given table."""
