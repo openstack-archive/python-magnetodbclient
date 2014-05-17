@@ -41,7 +41,7 @@ def _get_lsi_names(indexes):
 class ListTable(magnetodbv1.ListCommand):
     """List tables that belong to a given tenant."""
 
-    resource_path = ('table',)
+    resource_path = ('tables',)
     method = 'list_tables'
     log = logging.getLogger(__name__ + '.ListTable')
     _formatters = {'Table Name': _format_table_name}

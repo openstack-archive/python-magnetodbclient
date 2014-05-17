@@ -425,7 +425,9 @@ class UpdateCommand(MagnetoDBCommand, show.ShowOne):
             if path in data:
                 data = data[path]
             else:
-                return {}
+                return {'': ''}
+            if not data:
+                return {'': ''}
         return data
 
     def run(self, parsed_args):
@@ -514,10 +516,13 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
         return data
 
     def _get_resource(self, data):
-        collection = _get_resource_plural(self.resource_path[0])
-        data = data[collection]
-        for path in self.resource_path[1:]:
-            data = data[path]
+        for path in self.resource_path:
+            if path in data:
+                data = data[path]
+            else:
+                return []
+            if not data:
+                return []
         return data
 
     def retrieve_list(self, parsed_args):
@@ -600,21 +605,23 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
             if path in data:
                 data = data[path]
             else:
-                return {}
+                return {'': ''}
+            if not data:
+                return {'': ''}
+        return data
+
+    def call_server(self, magnetodb_client, name, parsed_args, body):
+        obj_shower = getattr(magnetodb_client, self.method)
+        data = obj_shower(name)
         return data
 
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)', parsed_args)
         magnetodb_client = self.get_client()
 
-        _name = parsed_args.name
-
+        _name = getattr(parsed_args, 'name', None)
         body = self.args2body(parsed_args)
-        obj_shower = getattr(magnetodb_client, self.method)
-        if body:
-            data = obj_shower(_name, body)
-        else:
-            data = obj_shower(_name)
+        data = self.call_server(magnetodb_client, _name, parsed_args, body)
         if data:
             resource = self._get_resource(data, parsed_args)
             self.format_output_data(resource)

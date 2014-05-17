@@ -82,6 +82,7 @@ COMMAND_V1 = {
     'item-update': item.UpdateItem,
     'query': item.Query,
     'scan': item.Scan,
+    'batch-write': item.BatchWrite,
 }
 
 COMMANDS = {'1': COMMAND_V1}

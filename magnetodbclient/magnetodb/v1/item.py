@@ -24,20 +24,6 @@ from magnetodbclient.magnetodb import v1 as magnetodbv1
 from magnetodbclient.openstack.common.gettextutils import _
 
 
-def _format_table_name(table):
-    try:
-        return table['href']
-    except Exception:
-        return ''
-
-
-def _get_lsi_names(indexes):
-    index_names = []
-    for index in indexes:
-        index_names.append(index['index_name'])
-    return index_names
-
-
 class GetItem(magnetodbv1.ShowCommand):
     """Gets item from a given table by key."""
 
@@ -47,16 +33,20 @@ class GetItem(magnetodbv1.ShowCommand):
     log = logging.getLogger(__name__ + '.GetItem')
 
     def add_known_arguments(self, parser):
-        help_str = _('Name of table to look up')
         parser.add_argument(
             'name', metavar='TABLE_NAME',
-            help=help_str)
+            help=_('Name of table to look up'))
         parser.add_argument(
             '--request-file', metavar='FILE', dest='request_file_name',
             help=_('File that contains item description to put in table'))
 
     def args2body(self, parsed_args):
         return utils.get_file_contents(parsed_args.request_file_name)
+
+    def call_server(self, magnetodb_client, name, parsed_args, body):
+        obj_shower = getattr(magnetodb_client, self.method)
+        data = obj_shower(name, body)
+        return data
 
 
 class PutItem(magnetodbv1.CreateCommand):
@@ -108,7 +98,7 @@ class UpdateItem(magnetodbv1.UpdateCommand):
     resource_path = ('attributes',)
     resource = 'item'
 
-    # NOTE(aostapenko) Update item is not supported on server side
+    # NOTE(aostapenko) Update item is not supported on server side yet
     # remove this method in future
     def run(self, parsed_args):
         print("Update item is not supported now on server side")
@@ -129,7 +119,7 @@ class Query(magnetodbv1.ListCommand):
     """Query table that belong to a given tenant."""
 
     resource = 'item'
-    resource_path = ('item',)
+    resource_path = ('items',)
     method = 'query'
     log = logging.getLogger(__name__ + '.Query')
 
@@ -154,6 +144,27 @@ class Scan(Query):
     """Scan table that belong to a given tenant."""
 
     resource = 'item'
-    resource_path = ('item',)
+    resource_path = ('items',)
     method = 'scan'
     log = logging.getLogger(__name__ + '.Scan')
+
+
+class BatchWrite(magnetodbv1.ShowCommand):
+    """Batch write command."""
+
+    resource_path = ('unprocessed_items',)
+    method = 'batch_write_item'
+    log = logging.getLogger(__name__ + '.GetItem')
+
+    def add_known_arguments(self, parser):
+        parser.add_argument(
+            '--request-file', metavar='FILE', dest='request_file_name',
+            help=_('File that contains item description to put in table'))
+
+    def args2body(self, parsed_args):
+        return utils.get_file_contents(parsed_args.request_file_name)
+
+    def call_server(self, magnetodb_client, name, parsed_args, body):
+        obj_shower = getattr(magnetodb_client, self.method)
+        data = obj_shower(body)
+        return data
