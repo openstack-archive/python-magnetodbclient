@@ -332,19 +332,26 @@ class MagnetoDBCommand(command.OpenStackCommand):
         self.add_known_arguments(parser)
         return parser
 
-    def format_output_data(self, resource):
+    def _get_info(self, data):
+        for path in self.resource_path:
+            data = data.get(path, self.default_info)
+            if not data:
+                data = self.default_info
+        return data
+
+    def format_output_data(self, info):
         # Modify data to make it more readable
-        for k, v in resource.iteritems():
+        for k, v in info.iteritems():
             if isinstance(v, list):
                 value = '\n'.join(utils.dumps(
                     i, indent=self.json_indent) if isinstance(i, dict)
                     else str(i) for i in v)
-                resource[k] = value
+                info[k] = value
             elif isinstance(v, dict):
                 value = utils.dumps(v, indent=self.json_indent)
-                resource[k] = value
+                info[k] = value
             elif v is None:
-                resource[k] = ''
+                info[k] = ''
 
     def exclude_rows(self, info):
         for row in self.excluded_rows:
@@ -369,24 +376,17 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
     resource = None
     log = None
     success_message = _('Created a new %s:')
+    default_info = {'': ''}
 
     def get_parser(self, prog_name):
         parser = super(CreateCommand, self).get_parser(prog_name)
         return parser
 
-    def format_output_data(self, resource):
-        for k, v in resource.iteritems():
+    def format_output_data(self, info):
+        for k, v in info.iteritems():
             if k in self._formatters:
-                resource[k] = self._formatters[k](v)
-        super(CreateCommand, self).format_output_data(resource)
-
-    def _get_resource(self, data):
-        for path in self.resource_path:
-            if path in data:
-                data = data[path]
-            else:
-                return {}
-        return data
+                info[k] = self._formatters[k](v)
+        super(CreateCommand, self).format_output_data(info)
 
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)' % parsed_args)
@@ -400,16 +400,16 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
             data = obj_creator(parsed_args.name, body)
         else:
             data = obj_creator(body)
-        resource = self._get_resource(data)
-        self.format_output_data(resource)
-        self.exclude_rows(resource)
+        info = self._get_info(data)
+        self.format_output_data(info)
+        self.exclude_rows(info)
 
-        if resource:
+        if info:
             print(self.success_message % self.resource,
                   file=self.app.stdout)
         else:
-            resource = {'': ''}
-        return zip(*sorted(resource.iteritems()))
+            info = {'': ''}
+        return zip(*sorted(info.iteritems()))
 
 
 class UpdateCommand(MagnetoDBCommand, show.ShowOne):
@@ -419,16 +419,7 @@ class UpdateCommand(MagnetoDBCommand, show.ShowOne):
     api = 'keyvalue'
     resource = None
     log = None
-
-    def _get_resource(self, data):
-        for path in self.resource_path:
-            if path in data:
-                data = data[path]
-            else:
-                return {'': ''}
-            if not data:
-                return {'': ''}
-        return data
+    default_info = {'': ''}
 
     def run(self, parsed_args):
         self.log.debug('run(%s)', parsed_args)
@@ -437,16 +428,16 @@ class UpdateCommand(MagnetoDBCommand, show.ShowOne):
         obj_updator = getattr(magnetodb_client, self.method)
         data = obj_updator(parsed_args.name, body)
 
-        resource = self._get_resource(data)
-        self.format_output_data(resource)
+        info = self._get_info(data)
+        self.format_output_data(info)
 
-        if resource:
+        if info:
             print((_('Updated %(resource)s: %(name)s') %
                    {'name': parsed_args.name, 'resource': self.resource}),
                   file=self.app.stdout)
         else:
-            resource = {'': ''}
-        return zip(*sorted(resource.iteritems()))
+            info = {'': ''}
+        return zip(*sorted(info.iteritems()))
 
 
 class DeleteCommand(MagnetoDBCommand):
@@ -491,6 +482,7 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
     unknown_parts_flag = True
     pagination_support = False
     sorting_support = False
+    default_info = []
 
     def get_parser(self, prog_name):
         parser = super(ListCommand, self).get_parser(prog_name)
@@ -513,16 +505,6 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
     def call_server(self, magnetodb_client, search_opts, parsed_args, body):
         obj_lister = getattr(magnetodb_client, self.method)
         data = obj_lister(**search_opts)
-        return data
-
-    def _get_resource(self, data):
-        for path in self.resource_path:
-            if path in data:
-                data = data[path]
-            else:
-                return []
-            if not data:
-                return []
         return data
 
     def retrieve_list(self, parsed_args):
@@ -552,8 +534,8 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
                 search_opts.update({'sort_dir': dirs})
         data = self.call_server(magnetodb_client, search_opts, parsed_args,
                                 body)
-        resource = self._get_resource(data)
-        return resource
+        info = self._get_info(data)
+        return info
 
     def extend_list(self, data, parsed_args):
         """Update a retrieved list.
@@ -588,27 +570,18 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
     api = 'keyvalue'
     resource = None
     log = None
+    default_info = {'': ''}
 
     def get_parser(self, prog_name):
         parser = super(ShowCommand, self).get_parser(prog_name)
         add_show_list_common_argument(parser)
         return parser
 
-    def format_output_data(self, resource):
-        for k, v in resource.iteritems():
+    def format_output_data(self, info):
+        for k, v in info.iteritems():
             if k in self._formatters:
-                resource[k] = self._formatters[k](v)
-        super(ShowCommand, self).format_output_data(resource)
-
-    def _get_resource(self, data, parsed_args):
-        for path in self.resource_path:
-            if path in data:
-                data = data[path]
-            else:
-                return {'': ''}
-            if not data:
-                return {'': ''}
-        return data
+                info[k] = self._formatters[k](v)
+        super(ShowCommand, self).format_output_data(info)
 
     def call_server(self, magnetodb_client, name, parsed_args, body):
         obj_shower = getattr(magnetodb_client, self.method)
@@ -623,9 +596,9 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
         body = self.args2body(parsed_args)
         data = self.call_server(magnetodb_client, _name, parsed_args, body)
         if data:
-            resource = self._get_resource(data, parsed_args)
-            self.format_output_data(resource)
-            self.exclude_rows(resource)
+            info = self._get_info(data)
+            self.format_output_data(info)
+            self.exclude_rows(info)
         else:
-            resource = {'': ''}
-        return zip(*sorted(resource.iteritems()))
+            info = {'': ''}
+        return zip(*sorted(info.iteritems()))
