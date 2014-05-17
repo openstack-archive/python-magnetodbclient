@@ -63,15 +63,14 @@ class PutItem(magnetodbv1.CreateCommand):
     """Puts item to a given table."""
 
     resource = 'item'
-    resource_path = ()
+    resource_path = ('attributes',)
     method = 'put_item'
     log = logging.getLogger(__name__ + '.PutItem')
 
     def add_known_arguments(self, parser):
-        help_str = _('Name of table to put item in')
         parser.add_argument(
             'name', metavar='TABLE_NAME',
-            help=help_str)
+            help=_('Name of table to put item in'))
         parser.add_argument(
             '--request-file', metavar='FILE', dest='request_file_name',
             help=_('File that contains item description to put in table'))
@@ -90,13 +89,71 @@ class DeleteItem(magnetodbv1.CreateCommand):
     log = logging.getLogger(__name__ + '.DeleteItem')
 
     def add_known_arguments(self, parser):
-        help_str = _('Name of table to delete item from')
         parser.add_argument(
             'name', metavar='TABLE_NAME',
-            help=help_str)
+            help=_('Name of table to delete item from'))
         parser.add_argument(
             '--request-file', metavar='FILE', dest='request_file_name',
             help=_('File that contains item key description'))
 
     def args2body(self, parsed_args):
         return utils.get_file_contents(parsed_args.request_file_name)
+
+
+class UpdateItem(magnetodbv1.UpdateCommand):
+    """Updates item in a given table."""
+
+    log = logging.getLogger(__name__ + '.UpdateItem')
+    method = 'update_item'
+    resource_path = ('attributes',)
+    resource = 'item'
+
+    # NOTE(aostapenko) Update item is not supported on server side
+    # remove this method in future
+    def run(self, parsed_args):
+        print("Update item is not supported now on server side")
+
+    def add_known_arguments(self, parser):
+        parser.add_argument(
+            'name', metavar='TABLE_NAME',
+            help=_('Name of table to update item'))
+        parser.add_argument(
+            '--request-file', metavar='FILE', dest='request_file_name',
+            help=_('File that contains item update description'))
+
+    def args2body(self, parsed_args):
+        return utils.get_file_contents(parsed_args.request_file_name)
+
+
+class Query(magnetodbv1.ListCommand):
+    """Query table that belong to a given tenant."""
+
+    resource = 'item'
+    resource_path = ('item',)
+    method = 'query'
+    log = logging.getLogger(__name__ + '.Query')
+
+    def add_known_arguments(self, parser):
+        parser.add_argument(
+            'name', metavar='TABLE_NAME',
+            help=_('Name of table to query'))
+        parser.add_argument(
+            '--request-file', metavar='FILE', dest='request_file_name',
+            help=_('File that contains query request description'))
+
+    def args2body(self, parsed_args):
+        return utils.get_file_contents(parsed_args.request_file_name)
+
+    def call_server(self, magnetodb_client, search_opts, parsed_args, body):
+        obj_lister = getattr(magnetodb_client, self.method)
+        data = obj_lister(parsed_args.name, body, **search_opts)
+        return data
+
+
+class Scan(Query):
+    """Scan table that belong to a given tenant."""
+
+    resource = 'item'
+    resource_path = ('item',)
+    method = 'scan'
+    log = logging.getLogger(__name__ + '.Scan')

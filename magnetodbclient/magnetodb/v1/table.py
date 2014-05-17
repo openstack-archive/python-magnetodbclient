@@ -146,3 +146,4 @@ class DeleteTable(magnetodbv1.DeleteCommand):
 
     log = logging.getLogger(__name__ + '.DeleteTable')
     resource = 'table'
+    method = 'delete_table'

@@ -382,7 +382,10 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
 
     def _get_resource(self, data):
         for path in self.resource_path:
-            data = data[path]
+            if path in data:
+                data = data[path]
+            else:
+                return {}
         return data
 
     def get_data(self, parsed_args):
@@ -393,7 +396,7 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
                     self.values_specs)
         body = self.args2body(parsed_args)
         obj_creator = getattr(magnetodb_client, self.method)
-        if parsed_args.name:
+        if getattr(parsed_args, 'name', None):
             data = obj_creator(parsed_args.name, body)
         else:
             data = obj_creator(body)
@@ -409,49 +412,39 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
         return zip(*sorted(resource.iteritems()))
 
 
-class UpdateCommand(MagnetoDBCommand):
+class UpdateCommand(MagnetoDBCommand, show.ShowOne):
     """Update resource's information
     """
 
     api = 'keyvalue'
     resource = None
     log = None
-    allow_names = True
 
-    def get_parser(self, prog_name):
-        parser = super(UpdateCommand, self).get_parser(prog_name)
-        parser.add_argument(
-            'id', metavar=self.resource.upper(),
-            help=_('ID or name of %s to update') % self.resource)
-        return parser
+    def _get_resource(self, data):
+        for path in self.resource_path:
+            if path in data:
+                data = data[path]
+            else:
+                return {}
+        return data
 
     def run(self, parsed_args):
         self.log.debug('run(%s)', parsed_args)
         magnetodb_client = self.get_client()
-        _extra_values = parse_args_to_dict(self.values_specs)
-        _merge_args(self, parsed_args, _extra_values,
-                    self.values_specs)
         body = self.args2body(parsed_args)
-        if self.resource in body:
-            body[self.resource].update(_extra_values)
+        obj_updator = getattr(magnetodb_client, self.method)
+        data = obj_updator(parsed_args.name, body)
+
+        resource = self._get_resource(data)
+        self.format_output_data(resource)
+
+        if resource:
+            print((_('Updated %(resource)s: %(name)s') %
+                   {'name': parsed_args.name, 'resource': self.resource}),
+                  file=self.app.stdout)
         else:
-            body[self.resource] = _extra_values
-        if not body[self.resource]:
-            raise exceptions.CommandError(
-                _("Must specify new values to update %s") % self.resource)
-        if self.allow_names:
-            _id = find_resourceid_by_name_or_id(
-                magnetodb_client, self.resource, parsed_args.id)
-        else:
-            _id = find_resourceid_by_id(
-                magnetodb_client, self.resource, parsed_args.id)
-        obj_updator = getattr(magnetodb_client,
-                              "update_%s" % self.resource)
-        obj_updator(_id, body)
-        print((_('Updated %(resource)s: %(id)s') %
-               {'id': parsed_args.id, 'resource': self.resource}),
-              file=self.app.stdout)
-        return
+            resource = {'': ''}
+        return zip(*sorted(resource.iteritems()))
 
 
 class DeleteCommand(MagnetoDBCommand):
@@ -474,8 +467,7 @@ class DeleteCommand(MagnetoDBCommand):
     def run(self, parsed_args):
         self.log.debug('run(%s)', parsed_args)
         magnetodb_client = self.get_client()
-        obj_deleter = getattr(magnetodb_client,
-                              "delete_%s" % self.resource)
+        obj_deleter = getattr(magnetodb_client, self.method)
         _name = parsed_args.name
         obj_deleter(_name)
         print((_('Deleted %(resource)s: %(name)s')
@@ -516,7 +508,7 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
             search_opts.update({'verbose': 'True'})
         return search_opts
 
-    def call_server(self, magnetodb_client, search_opts, parsed_args):
+    def call_server(self, magnetodb_client, search_opts, parsed_args, body):
         obj_lister = getattr(magnetodb_client, self.method)
         data = obj_lister(**search_opts)
         return data
@@ -536,6 +528,7 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
                     self.values_specs)
         search_opts = self.args2search_opts(parsed_args)
         search_opts.update(_extra_values)
+        body = self.args2body(parsed_args)
         if self.pagination_support:
             page_size = parsed_args.page_size
             if page_size:
@@ -552,7 +545,8 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
                 dirs = dirs[:len(keys)]
             if dirs:
                 search_opts.update({'sort_dir': dirs})
-        data = self.call_server(magnetodb_client, search_opts, parsed_args)
+        data = self.call_server(magnetodb_client, search_opts, parsed_args,
+                                body)
         resource = self._get_resource(data)
         return resource
 
@@ -603,7 +597,10 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
 
     def _get_resource(self, data, parsed_args):
         for path in self.resource_path:
-            data = data[path]
+            if path in data:
+                data = data[path]
+            else:
+                return {}
         return data
 
     def get_data(self, parsed_args):

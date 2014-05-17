@@ -124,7 +124,7 @@ def get_item_properties(item, fields, mixed_case_fields=[], formatters={}):
             else:
                 field_name = field.lower().replace(' ', '_')
             if not hasattr(item, field_name) and isinstance(item, dict):
-                data = item[field_name]
+                data = item.get(field_name)
             else:
                 data = getattr(item, field_name, '')
             if data is None:

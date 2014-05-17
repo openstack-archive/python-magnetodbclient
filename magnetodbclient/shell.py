@@ -79,6 +79,9 @@ COMMAND_V1 = {
     'item-put': item.PutItem,
     'item-get': item.GetItem,
     'item-delete': item.DeleteItem,
+    'item-update': item.UpdateItem,
+    'query': item.Query,
+    'scan': item.Scan,
 }
 
 COMMANDS = {'1': COMMAND_V1}
