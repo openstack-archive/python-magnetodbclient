@@ -130,6 +130,7 @@ def get_item_properties(item, fields, mixed_case_fields=[], formatters={}):
             if data is None:
                 data = ''
             row.append(data)
+
     return tuple(row)
 
 
@@ -205,5 +206,9 @@ def safe_encode_dict(data):
 def get_file_contents(fname):
     with open(fname, 'r') as f:
         content = f.read()
-    body = json.loads(content)
+    try:
+        body = json.loads(content)
+    except ValueError:
+        msg = _("Error occured while trying to translate JSON")
+        raise exceptions.MagnetoDBClientException(message=msg)
     return body

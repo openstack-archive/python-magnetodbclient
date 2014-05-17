@@ -404,11 +404,8 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
         self.format_output_data(info)
         self.exclude_rows(info)
 
-        if info:
-            print(self.success_message % self.resource,
-                  file=self.app.stdout)
-        else:
-            info = {'': ''}
+        print(self.success_message % self.resource,
+              file=self.app.stdout)
         return zip(*sorted(info.iteritems()))
 
 
@@ -431,12 +428,9 @@ class UpdateCommand(MagnetoDBCommand, show.ShowOne):
         info = self._get_info(data)
         self.format_output_data(info)
 
-        if info:
-            print((_('Updated %(resource)s: %(name)s') %
-                   {'name': parsed_args.name, 'resource': self.resource}),
-                  file=self.app.stdout)
-        else:
-            info = {'': ''}
+        print((_('Updated %(resource)s: %(name)s') %
+               {'name': parsed_args.name, 'resource': self.resource}),
+              file=self.app.stdout)
         return zip(*sorted(info.iteritems()))
 
 
@@ -534,8 +528,7 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
                 search_opts.update({'sort_dir': dirs})
         data = self.call_server(magnetodb_client, search_opts, parsed_args,
                                 body)
-        info = self._get_info(data)
-        return info
+        return data
 
     def extend_list(self, data, parsed_args):
         """Update a retrieved list.
@@ -558,8 +551,9 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)', parsed_args)
         data = self.retrieve_list(parsed_args)
-        self.extend_list(data, parsed_args)
-        return self.setup_columns(data, parsed_args)
+        info = self._get_info(data)
+        self.extend_list(info, parsed_args)
+        return self.setup_columns(info, parsed_args)
 
 
 class ShowCommand(MagnetoDBCommand, show.ShowOne):
@@ -571,6 +565,7 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
     resource = None
     log = None
     default_info = {'': ''}
+    success_message = ""
 
     def get_parser(self, prog_name):
         parser = super(ShowCommand, self).get_parser(prog_name)
@@ -595,10 +590,9 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
         _name = getattr(parsed_args, 'name', None)
         body = self.args2body(parsed_args)
         data = self.call_server(magnetodb_client, _name, parsed_args, body)
-        if data:
-            info = self._get_info(data)
-            self.format_output_data(info)
-            self.exclude_rows(info)
-        else:
-            info = {'': ''}
+        info = self._get_info(data)
+        self.format_output_data(info)
+        self.exclude_rows(info)
+        if self.success_message:
+            print(self.success_message)
         return zip(*sorted(info.iteritems()))

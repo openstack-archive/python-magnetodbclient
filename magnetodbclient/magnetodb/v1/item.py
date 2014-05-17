@@ -149,12 +149,14 @@ class Scan(Query):
     log = logging.getLogger(__name__ + '.Scan')
 
 
-class BatchWrite(magnetodbv1.ShowCommand):
+class BatchWrite(magnetodbv1.ListCommand):
     """Batch write command."""
 
     resource_path = ('unprocessed_items',)
     method = 'batch_write_item'
     log = logging.getLogger(__name__ + '.GetItem')
+    success_message = _("Unprocessed items:")
+    list_columns = ['Table Name', 'Request Type', 'Request']
 
     def add_known_arguments(self, parser):
         parser.add_argument(
@@ -168,3 +170,16 @@ class BatchWrite(magnetodbv1.ShowCommand):
         obj_shower = getattr(magnetodb_client, self.method)
         data = obj_shower(body)
         return data
+
+    def _get_info(self, data):
+        data = super(BatchWrite, self)._get_info(data)
+        if not data:
+            return data
+        output_list = []
+        for table_name, requests in data.iteritems():
+            for request in requests:
+                for request_type, request_body in request.iteritems():
+                    output_list.append({"table_name": table_name,
+                                        "request": request_body,
+                                        "request_type": request_type})
+        return output_list
