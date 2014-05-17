@@ -552,6 +552,8 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
         self.log.debug('get_data(%s)', parsed_args)
         data = self.retrieve_list(parsed_args)
         info = self._get_info(data)
+        if self.success_message:
+            print(self.success_message)
         self.extend_list(info, parsed_args)
         return self.setup_columns(info, parsed_args)
 
