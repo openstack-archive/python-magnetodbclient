@@ -322,6 +322,7 @@ class MagnetoDBCommand(command.OpenStackCommand):
     excluded_rows = ()
     _formatters = {}
     resource_path = ()
+    required_args = ()
     json_indent = None
     success_message = ''
 
