@@ -172,6 +172,8 @@ class BatchWrite(magnetodbv1.ListCommand):
     def call_server(self, magnetodb_client, name, parsed_args, body):
         obj_shower = getattr(magnetodb_client, self.method)
         data = obj_shower(body)
+        if not data['unprocessed_items']:
+            self.success_message = ''
         return data
 
     def _get_info(self, data, parsed_args):
