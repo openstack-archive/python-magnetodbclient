@@ -77,6 +77,7 @@ class DeleteItem(magnetodbv1.CreateCommand):
     resource = 'item'
     method = 'delete_item'
     resource_path = ('attributes',)
+    required_args = ('request_file',)
     success_message = _('Deleted %s:')
     log = logging.getLogger(__name__ + '.DeleteItem')
 
