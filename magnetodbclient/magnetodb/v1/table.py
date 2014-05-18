@@ -128,17 +128,18 @@ class CreateTable(magnetodbv1.CreateCommand):
     resource = 'table'
     resource_path = ('table_description',)
     method = 'create_table'
+    required_args = ('request_file',)
     excluded_rows = ('links',)
     _formatters = {'local_secondary_indexes': _get_lsi_names}
     log = logging.getLogger(__name__ + '.CreateTable')
 
     def add_known_arguments(self, parser):
         parser.add_argument(
-            '--request-file', metavar='FILE', dest='request_file_name',
+            '--request-file', metavar='FILE',
             help=_('File that contains table description to create'))
 
     def args2body(self, parsed_args):
-        return utils.get_file_contents(parsed_args.request_file_name)
+        return utils.get_file_contents(parsed_args.request_file)
 
 
 class DeleteTable(magnetodbv1.DeleteCommand):

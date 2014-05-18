@@ -30,6 +30,7 @@ class GetItem(magnetodbv1.ShowCommand):
     resource = 'item'
     resource_path = ('item',)
     method = 'get_item'
+    required_args = ('request_file',)
     log = logging.getLogger(__name__ + '.GetItem')
 
     def add_known_arguments(self, parser):
@@ -37,11 +38,11 @@ class GetItem(magnetodbv1.ShowCommand):
             'name', metavar='TABLE_NAME',
             help=_('Name of table to look up'))
         parser.add_argument(
-            '--request-file', metavar='FILE', dest='request_file_name',
+            '--request-file', metavar='FILE',
             help=_('File that contains item description to put in table'))
 
     def args2body(self, parsed_args):
-        return utils.get_file_contents(parsed_args.request_file_name)
+        return utils.get_file_contents(parsed_args.request_file)
 
     def call_server(self, magnetodb_client, name, parsed_args, body):
         obj_shower = getattr(magnetodb_client, self.method)
@@ -55,6 +56,7 @@ class PutItem(magnetodbv1.CreateCommand):
     resource = 'item'
     resource_path = ('attributes',)
     method = 'put_item'
+    required_args = ('request_file',)
     log = logging.getLogger(__name__ + '.PutItem')
 
     def add_known_arguments(self, parser):
@@ -62,11 +64,11 @@ class PutItem(magnetodbv1.CreateCommand):
             'name', metavar='TABLE_NAME',
             help=_('Name of table to put item in'))
         parser.add_argument(
-            '--request-file', metavar='FILE', dest='request_file_name',
+            '--request-file', metavar='FILE',
             help=_('File that contains item description to put in table'))
 
     def args2body(self, parsed_args):
-        return utils.get_file_contents(parsed_args.request_file_name)
+        return utils.get_file_contents(parsed_args.request_file)
 
 
 class DeleteItem(magnetodbv1.CreateCommand):
@@ -83,11 +85,11 @@ class DeleteItem(magnetodbv1.CreateCommand):
             'name', metavar='TABLE_NAME',
             help=_('Name of table to delete item from'))
         parser.add_argument(
-            '--request-file', metavar='FILE', dest='request_file_name',
+            '--request-file', metavar='FILE', dest='request_file',
             help=_('File that contains item key description'))
 
     def args2body(self, parsed_args):
-        return utils.get_file_contents(parsed_args.request_file_name)
+        return utils.get_file_contents(parsed_args.request_file)
 
 
 class UpdateItem(magnetodbv1.UpdateCommand):
@@ -108,11 +110,11 @@ class UpdateItem(magnetodbv1.UpdateCommand):
             'name', metavar='TABLE_NAME',
             help=_('Name of table to update item'))
         parser.add_argument(
-            '--request-file', metavar='FILE', dest='request_file_name',
+            '--request-file', metavar='FILE',
             help=_('File that contains item update description'))
 
     def args2body(self, parsed_args):
-        return utils.get_file_contents(parsed_args.request_file_name)
+        return utils.get_file_contents(parsed_args.request_file)
 
 
 class Query(magnetodbv1.ListCommand):
@@ -121,6 +123,7 @@ class Query(magnetodbv1.ListCommand):
     resource = 'item'
     resource_path = ('items',)
     method = 'query'
+    required_args = ('request_file',)
     log = logging.getLogger(__name__ + '.Query')
 
     def add_known_arguments(self, parser):
@@ -128,11 +131,11 @@ class Query(magnetodbv1.ListCommand):
             'name', metavar='TABLE_NAME',
             help=_('Name of table to query'))
         parser.add_argument(
-            '--request-file', metavar='FILE', dest='request_file_name',
+            '--request-file', metavar='FILE', dest='request_file',
             help=_('File that contains query request description'))
 
     def args2body(self, parsed_args):
-        return utils.get_file_contents(parsed_args.request_file_name)
+        return utils.get_file_contents(parsed_args.request_file)
 
     def call_server(self, magnetodb_client, search_opts, parsed_args, body):
         obj_lister = getattr(magnetodb_client, self.method)
@@ -143,8 +146,6 @@ class Query(magnetodbv1.ListCommand):
 class Scan(Query):
     """Scan table that belong to a given tenant."""
 
-    resource = 'item'
-    resource_path = ('items',)
     method = 'scan'
     log = logging.getLogger(__name__ + '.Scan')
 
@@ -154,17 +155,18 @@ class BatchWrite(magnetodbv1.ListCommand):
 
     resource_path = ('unprocessed_items',)
     method = 'batch_write_item'
+    required_args = ('request_file',)
     log = logging.getLogger(__name__ + '.GetItem')
     success_message = _("Unprocessed items:")
     list_columns = ['Table Name', 'Request Type', 'Request']
 
     def add_known_arguments(self, parser):
         parser.add_argument(
-            '--request-file', metavar='FILE', dest='request_file_name',
+            '--request-file', metavar='FILE',
             help=_('File that contains item description to put in table'))
 
     def args2body(self, parsed_args):
-        return utils.get_file_contents(parsed_args.request_file_name)
+        return utils.get_file_contents(parsed_args.request_file)
 
     def call_server(self, magnetodb_client, name, parsed_args, body):
         obj_shower = getattr(magnetodb_client, self.method)

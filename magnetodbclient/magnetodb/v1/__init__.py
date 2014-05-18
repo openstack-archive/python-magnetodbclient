@@ -328,6 +328,13 @@ class MagnetoDBCommand(command.OpenStackCommand):
     def get_client(self):
         return self.app.client_manager.magnetodb
 
+    def check_required_args(self, parsed_args):
+        for arg in self.required_args:
+            if not getattr(parsed_args, arg):
+                param_name = '--%s' % arg.replace('_', '-')
+                msg = _("'%s' is a required parameter") % param_name
+                raise exceptions.MagnetoDBCLIError(message=msg)
+
     def get_parser(self, prog_name):
         parser = super(MagnetoDBCommand, self).get_parser(prog_name)
         self.add_known_arguments(parser)
@@ -379,10 +386,6 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
     success_message = _('Created a new %s:')
     default_info = {'': ''}
 
-    def get_parser(self, prog_name):
-        parser = super(CreateCommand, self).get_parser(prog_name)
-        return parser
-
     def format_output_data(self, info):
         for k, v in info.iteritems():
             if k in self._formatters:
@@ -391,6 +394,7 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
 
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)' % parsed_args)
+        self.check_required_args(parsed_args)
         magnetodb_client = self.get_client()
         _extra_values = parse_args_to_dict(self.values_specs)
         _merge_args(self, parsed_args, _extra_values,
@@ -421,6 +425,7 @@ class UpdateCommand(MagnetoDBCommand, show.ShowOne):
 
     def run(self, parsed_args):
         self.log.debug('run(%s)', parsed_args)
+        self.check_required_args(parsed_args)
         magnetodb_client = self.get_client()
         body = self.args2body(parsed_args)
         obj_updator = getattr(magnetodb_client, self.method)
@@ -454,6 +459,7 @@ class DeleteCommand(MagnetoDBCommand):
 
     def run(self, parsed_args):
         self.log.debug('run(%s)', parsed_args)
+        self.check_required_args(parsed_args)
         magnetodb_client = self.get_client()
         obj_deleter = getattr(magnetodb_client, self.method)
         _name = parsed_args.name
@@ -490,6 +496,7 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
 
     def args2search_opts(self, parsed_args):
         search_opts = {}
+        self.check_required_args(parsed_args)
         fields = parsed_args.fields
         if parsed_args.fields:
             search_opts.update({'fields': fields})
@@ -551,6 +558,7 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
 
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)', parsed_args)
+        self.check_required_args(parsed_args)
         data = self.retrieve_list(parsed_args)
         info = self._get_info(data)
         if self.success_message:
@@ -587,8 +595,8 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
 
     def get_data(self, parsed_args):
         self.log.debug('get_data(%s)', parsed_args)
+        self.check_required_args(parsed_args)
         magnetodb_client = self.get_client()
-
         _name = getattr(parsed_args, 'name', None)
         body = self.args2body(parsed_args)
         data = self.call_server(magnetodb_client, _name, parsed_args, body)
