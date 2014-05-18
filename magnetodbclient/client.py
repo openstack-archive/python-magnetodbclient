@@ -89,24 +89,63 @@ class ServiceCatalog(object):
             return matching_endpoints[0][endpoint_type]
 
 
+class ServiceCatalogV3(object):
+
+    def __init__(self, resp, resource_dict):
+        self.resp = resp
+        self.catalog = resource_dict
+
+    def get_token(self):
+        return self.resp['x-subject-token']
+
+    def url_for(self, attr=None, filter_value=None,
+                service_type='kv-storage', endpoint_type='public'):
+        """Fetch the URL from the MagnetoDB service for
+        a particular endpoint interface. If none given, return
+        publicURL.
+        """
+
+        catalog = self.catalog['token'].get('catalog', [])
+        matching_endpoints = []
+        interface = endpoint_type[:-3]
+        for service in catalog:
+            if service['type'] != service_type:
+                continue
+
+            endpoints = service['endpoints']
+            for endpoint in endpoints:
+                if endpoint['interface'] == interface:
+                    if not filter_value or endpoint.get(attr) == filter_value:
+                        matching_endpoints.append(endpoint)
+
+        if not matching_endpoints:
+            raise exceptions.EndpointNotFound()
+        elif len(matching_endpoints) > 1:
+            raise exceptions.AmbiguousEndpoints(
+                matching_endpoints=matching_endpoints)
+        return matching_endpoints[0]['url']
+
+
 class HTTPClient(httplib2.Http):
     """Handles the REST calls and responses, include authn."""
 
     USER_AGENT = 'python-magnetodbclient'
 
     def __init__(self, username=None, tenant_name=None, tenant_id=None,
-                 password=None, auth_url=None,
-                 token=None, region_name=None, timeout=None,
-                 endpoint_url=None, insecure=False,
-                 endpoint_type='publicURL',
-                 auth_strategy='keystone', ca_cert=None, log_credentials=False,
-                 service_type='kv-storage',
+                 password=None, auth_url=None, token=None, region_name=None,
+                 timeout=None, endpoint_url=None, insecure=False,
+                 endpoint_type='publicURL', auth_strategy='keystone',
+                 ca_cert=None, log_credentials=False,
+                 service_type='kv-storage', domain_id='default',
+                 domain_name='Default',
                  **kwargs):
         super(HTTPClient, self).__init__(timeout=timeout, ca_certs=ca_cert)
 
         self.username = username
         self.tenant_name = tenant_name
         self.tenant_id = tenant_id
+        self.domain_name = domain_name
+        self.domain_id = domain_id or 'default'
         self.password = password
         self.auth_url = auth_url.rstrip('/') if auth_url else None
         self.service_type = service_type
@@ -119,6 +158,9 @@ class HTTPClient(httplib2.Http):
         self.endpoint_url = endpoint_url
         self.auth_strategy = auth_strategy
         self.log_credentials = log_credentials
+        self.project_name = self.tenant_name
+        self.project_id = self.tenant_id
+
         # httplib2 overrides
         self.disable_ssl_certificate_validation = insecure
 
@@ -218,6 +260,58 @@ class HTTPClient(httplib2.Http):
                 service_type=self.service_type,
                 endpoint_type=self.endpoint_type)
 
+    def _extract_service_catalog_v3(self, resp, body):
+        """Set the client's service catalog from the response keystone v3 data.
+        """
+        self.service_catalog = ServiceCatalogV3(resp, body)
+        try:
+            self.auth_token = self.service_catalog.get_token()
+        except KeyError:
+            raise exceptions.Unauthorized()
+        if not self.endpoint_url:
+            self.endpoint_url = self.service_catalog.url_for(
+                attr='region', filter_value=self.region_name,
+                service_type=self.service_type,
+                endpoint_type=self.endpoint_type)
+
+    def _authenticate_keystone_v3(self):
+        """Provides authentication using Identity API v3."""
+
+        req_url = self.auth_url.rstrip('/') + '/auth/tokens'
+
+        creds = {
+            "auth": {
+                "identity": {
+                    "methods": ["password"],
+                    "password": {
+                        "user": {
+                            "domain": {"id": self.domain_id},
+                            "name": self.username,
+                            "password": self.password,
+                        }
+                    }
+                },
+                "scope": {
+                    "project": {
+                        "domain": {"id": self.domain_id},
+                        "name": self.project_name
+                    }
+                }
+            }
+        }
+
+        headers = {'Content-Type': 'application/json'}
+        body = json.dumps(creds)
+        resp, body = self._cs_request(req_url, 'POST',
+                                      headers=headers, body=body)
+
+        if body:
+            try:
+                body = json.loads(body)
+            except ValueError:
+                pass
+        self._extract_service_catalog_v3(resp, body)
+
     def _authenticate_keystone(self):
         if self.tenant_id:
             body = {'auth': {'passwordCredentials':
@@ -265,7 +359,14 @@ class HTTPClient(httplib2.Http):
 
     def authenticate(self):
         if self.auth_strategy == 'keystone':
-            self._authenticate_keystone()
+            auth_api = self.auth_url.split('/')[-1]
+            if auth_api == 'v2.0':
+                self._authenticate_keystone()
+            elif auth_api == 'v3':
+                self._authenticate_keystone_v3()
+            else:
+                err_msg = _('Unknown Keystone api version: %s') % auth_api
+                raise exceptions.Unauthorized(message=err_msg)
         elif self.auth_strategy == 'noauth':
             self._authenticate_noauth()
         else:

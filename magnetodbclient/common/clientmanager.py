@@ -45,9 +45,6 @@ class ClientManager(object):
     """Manages access to API clients, including authentication.
     """
     magnetodb = ClientCache(magnetodb_client.make_client)
-    # Provide support for old quantum commands (for example
-    # in stable versions)
-    quantum = magnetodb
 
     def __init__(self, token=None, url=None,
                  auth_url=None,
@@ -61,6 +58,8 @@ class ClientManager(object):
                  ca_cert=None,
                  log_credentials=False,
                  service_type=None,
+                 domain_id=None,
+                 domain_name=None,
                  ):
         self._token = token
         self._url = url
@@ -69,6 +68,8 @@ class ClientManager(object):
         self._endpoint_type = endpoint_type
         self._tenant_name = tenant_name
         self._tenant_id = tenant_id
+        self._domain_name = domain_name
+        self._domain_id = domain_id
         self._username = username
         self._password = password
         self._region_name = region_name
@@ -86,6 +87,8 @@ class ClientManager(object):
                 username=self._username,
                 tenant_name=self._tenant_name,
                 tenant_id=self._tenant_id,
+                domain_name=self._domain_name,
+                domain_id=self._domain_id,
                 password=self._password,
                 region_name=self._region_name,
                 auth_url=self._auth_url,
