@@ -173,8 +173,8 @@ class BatchWrite(magnetodbv1.ListCommand):
         data = obj_shower(body)
         return data
 
-    def _get_info(self, data):
-        data = super(BatchWrite, self)._get_info(data)
+    def _get_info(self, data, parsed_args):
+        data = super(BatchWrite, self)._get_info(data, parsed_args)
         if not data:
             return data
         output_list = []

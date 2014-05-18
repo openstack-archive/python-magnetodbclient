@@ -341,7 +341,7 @@ class MagnetoDBCommand(command.OpenStackCommand):
         self.add_known_arguments(parser)
         return parser
 
-    def _get_info(self, data):
+    def _get_info(self, data, parsed_args):
         for path in self.resource_path:
             data = data.get(path, self.default_info)
             if not data:
@@ -406,7 +406,7 @@ class CreateCommand(MagnetoDBCommand, show.ShowOne):
             data = obj_creator(parsed_args.name, body)
         else:
             data = obj_creator(body)
-        info = self._get_info(data)
+        info = self._get_info(data, parsed_args)
         self.format_output_data(info)
         self.exclude_rows(info)
 
@@ -432,7 +432,7 @@ class UpdateCommand(MagnetoDBCommand, show.ShowOne):
         obj_updator = getattr(magnetodb_client, self.method)
         data = obj_updator(parsed_args.name, body)
 
-        info = self._get_info(data)
+        info = self._get_info(data, parsed_args)
         self.format_output_data(info)
 
         print((_('Updated %(resource)s: %(name)s') %
@@ -561,7 +561,7 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
         self.log.debug('get_data(%s)', parsed_args)
         self.check_required_args(parsed_args)
         data = self.retrieve_list(parsed_args)
-        info = self._get_info(data)
+        info = self._get_info(data, parsed_args)
         if self.success_message:
             print(self.success_message)
         self.extend_list(info, parsed_args)
@@ -601,7 +601,7 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
         _name = getattr(parsed_args, 'name', None)
         body = self.args2body(parsed_args)
         data = self.call_server(magnetodb_client, _name, parsed_args, body)
-        info = self._get_info(data)
+        info = self._get_info(data, parsed_args)
         self.format_output_data(info)
         self.exclude_rows(info)
         if self.success_message:
