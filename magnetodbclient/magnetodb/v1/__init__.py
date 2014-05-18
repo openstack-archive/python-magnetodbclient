@@ -323,6 +323,7 @@ class MagnetoDBCommand(command.OpenStackCommand):
     _formatters = {}
     resource_path = ()
     json_indent = None
+    success_message = ''
 
     def get_client(self):
         return self.app.client_manager.magnetodb
@@ -567,7 +568,6 @@ class ShowCommand(MagnetoDBCommand, show.ShowOne):
     resource = None
     log = None
     default_info = {'': ''}
-    success_message = ""
 
     def get_parser(self, prog_name):
         parser = super(ShowCommand, self).get_parser(prog_name)
