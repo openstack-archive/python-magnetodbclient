@@ -102,8 +102,8 @@ class ShowIndex(ShowTable):
     resource_path = ('table', 'local_secondary_indexes')
     log = logging.getLogger(__name__ + '.ShowIndex')
 
-    def _get_resource(self, data, parsed_args):
-        data = super(ShowIndex, self)._get_resource(data, parsed_args)
+    def _get_info(self, data, parsed_args):
+        data = super(ShowIndex, self)._get_info(data, parsed_args)
         index_name = parsed_args.index_name
         for index in data:
             if index['index_name'] == parsed_args.index_name:
