@@ -62,7 +62,8 @@ class ListTable(magnetodbv1.ListCommand):
         if parsed_args.limit:
             search_opts.update({'limit': limit})
         if parsed_args.start_table_name:
-            search_opts.update({'start_table_name': start_table_name})
+            search_opts.update(
+                {'exclusive_start_table_name': start_table_name})
         return search_opts
 
 
