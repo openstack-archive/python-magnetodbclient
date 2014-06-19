@@ -424,8 +424,7 @@ class UpdateCommand(MagnetoDBCommand, show.ShowOne):
     log = None
     default_info = {'': ''}
 
-    def run(self, parsed_args):
-        self.log.debug('run(%s)', parsed_args)
+    def get_data(self, parsed_args):
         self.check_required_args(parsed_args)
         magnetodb_client = self.get_client()
         body = self.args2body(parsed_args)
@@ -435,9 +434,6 @@ class UpdateCommand(MagnetoDBCommand, show.ShowOne):
         info = self._get_info(data, parsed_args)
         self.format_output_data(info)
 
-        print((_('Updated %(resource)s: %(name)s') %
-               {'name': parsed_args.name, 'resource': self.resource}),
-              file=self.app.stdout)
         return zip(*sorted(info.iteritems()))
 
 

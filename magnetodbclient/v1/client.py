@@ -126,12 +126,13 @@ class Client(object):
     tables_path = base_path + "/tables"
     table_path = base_path + "/tables/%s"
     put_item_path = table_path + "/put_item"
+    update_item_path = table_path + "/update_item"
     delete_item_path = table_path + "/delete_item"
     get_item_path = table_path + "/get_item"
     query_path = table_path + "/query"
     scan_path = table_path + "/scan"
     batch_write_item_path = base_path + "/batch_write_item"
-    batch_read_item_path = base_path + "/batch_read_item"
+    batch_get_item_path = base_path + "/batch_get_item"
 
     # 8192 Is the default max URI len for eventlet.wsgi.server
     MAX_URI_LEN = 8192
@@ -158,7 +159,7 @@ class Client(object):
 
     def update_item(self, table_name, request_body):
         """Update item."""
-        return self.post(self.put_item_path % table_name, request_body)
+        return self.post(self.update_item_path % table_name, request_body)
 
     def delete_item(self, table_name, request_body):
         """Delete item."""
@@ -180,9 +181,9 @@ class Client(object):
         """Batch write item."""
         return self.post(self.batch_write_item_path, request_items)
 
-    def batch_read_item(self, request_items):
-        """Batch read item."""
-        return self.post(self.batch_read_item_path, request_items)
+    def batch_get_item(self, request_items):
+        """Batch get item."""
+        return self.post(self.batch_get_item_path, request_items)
 
     def __init__(self, **kwargs):
         """Initialize a new client for the MagnetoDB v1 API."""

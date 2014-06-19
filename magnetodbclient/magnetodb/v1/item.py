@@ -101,11 +101,6 @@ class UpdateItem(magnetodbv1.UpdateCommand):
     resource_path = ('attributes',)
     resource = 'item'
 
-    # NOTE(aostapenko) Update item is not supported on server side yet
-    # remove this method in future
-    def run(self, parsed_args):
-        print("Update item is not supported now on server side")
-
     def add_known_arguments(self, parser):
         parser.add_argument(
             'name', metavar='TABLE_NAME',
@@ -187,4 +182,40 @@ class BatchWrite(magnetodbv1.ListCommand):
                     output_list.append({"table_name": table_name,
                                         "request": request_body,
                                         "request_type": request_type})
+        return output_list
+
+
+class BatchGet(magnetodbv1.ListCommand):
+    """Batch get command."""
+
+    resource_path = ('responses',)
+    method = 'batch_get_item'
+    required_args = ('request_file',)
+    log = logging.getLogger(__name__ + '.GetItem')
+    success_message = _("Responses:")
+    list_columns = ['Table Name', 'Item']
+
+    def add_known_arguments(self, parser):
+        parser.add_argument(
+            '--request-file', metavar='FILE',
+            help=_('File that contains item description to put in table'))
+
+    def args2body(self, parsed_args):
+        return utils.get_file_contents(parsed_args.request_file)
+
+    def call_server(self, magnetodb_client, name, parsed_args, body):
+        obj_shower = getattr(magnetodb_client, self.method)
+        data = obj_shower(body)
+        return data
+
+    def _get_info(self, data, parsed_args):
+        data = super(BatchGet, self)._get_info(data, parsed_args)
+        if not data:
+            self.success_message = ""
+            return data
+        output_list = []
+        for table_name, items in data.iteritems():
+            for item in items:
+                output_list.append({"table_name": table_name,
+                                    "item": item})
         return output_list
