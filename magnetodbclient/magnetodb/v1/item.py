@@ -18,7 +18,6 @@ from __future__ import print_function
 
 import logging
 
-from magnetodbclient.common import exceptions
 from magnetodbclient.common import utils
 from magnetodbclient.magnetodb import v1 as magnetodbv1
 from magnetodbclient.openstack.common.gettextutils import _

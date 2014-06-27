@@ -111,8 +111,9 @@ class ShowIndex(ShowTable):
                 data = index
                 break
         else:
-            msg = _('Error. Index "%s" is not found in table "%s"')
-            msg %= (index_name, parsed_args.name)
+            msg = _('Error. Index "%(index_name)s" is not found in table \
+            "%(table_name)s"')
+            msg %= {'index_name': index_name, 'table_name': parsed_args.name}
             raise exceptions.MagnetoDBClientException(msg)
         return data
 
