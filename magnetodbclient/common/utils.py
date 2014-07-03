@@ -120,13 +120,10 @@ def get_item_properties(item, fields, mixed_case_fields=[], formatters={}):
             row.append(formatters[field](item))
         else:
             if field in mixed_case_fields:
-                field_name = field.replace(' ', '_')
+                reformed_field = field.replace(' ', '_')
             else:
-                field_name = field.lower().replace(' ', '_')
-            if not hasattr(item, field_name) and isinstance(item, dict):
-                data = item.get(field_name)
-            else:
-                data = getattr(item, field_name, '')
+                reformed_field = field.lower().replace(' ', '_')
+            data = item.get(field) or item.get(reformed_field)
             if data is None:
                 data = ''
             row.append(data)
