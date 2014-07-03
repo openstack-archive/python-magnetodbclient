@@ -104,7 +104,7 @@ def get_client_class(api_name, version, version_map):
     return import_class(client_path)
 
 
-def get_item_properties(item, fields, mixed_case_fields=[], formatters={}):
+def get_item_properties(item, fields, formatters={}):
     """Return a tuple containing the item properties.
 
     :param item: a single item resource (e.g. Server, Tenant, etc)
@@ -119,14 +119,8 @@ def get_item_properties(item, fields, mixed_case_fields=[], formatters={}):
         if field in formatters:
             row.append(formatters[field](item))
         else:
-            if field in mixed_case_fields:
-                field_name = field.replace(' ', '_')
-            else:
-                field_name = field.lower().replace(' ', '_')
-            if not hasattr(item, field_name) and isinstance(item, dict):
-                data = item.get(field_name)
-            else:
-                data = getattr(item, field_name, '')
+            reformed_field = field.lower().replace(' ', '_')
+            data = item.get(field) or item.get(reformed_field)
             if data is None:
                 data = ''
             row.append(data)
