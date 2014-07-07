@@ -20,19 +20,21 @@ except ImportError:
     import simplejson as json
 import logging
 import os
+import requests
+import time
 
-import httplib2
 
 from magnetodbclient.common import exceptions
 from magnetodbclient.common import utils
 from magnetodbclient.openstack.common.gettextutils import _
 
 _logger = logging.getLogger(__name__)
+requests_log = logging.getLogger("requests")
+requests_log.setLevel(logging.WARNING)
 
 # httplib2 retries requests on socket.timeout which
 # is not idempotent and can lead to orhan objects.
 # See: https://code.google.com/p/httplib2/issues/detail?id=124
-httplib2.RETRIES = 1
 
 if os.environ.get('MAGNETODBCLIENT_DEBUG'):
     ch = logging.StreamHandler()
@@ -92,11 +94,11 @@ class ServiceCatalog(object):
 class ServiceCatalogV3(object):
 
     def __init__(self, resp, resource_dict):
-        self.resp = resp
+        self.headers = resp.headers
         self.catalog = resource_dict
 
     def get_token(self):
-        return self.resp['x-subject-token']
+        return self.headers['x-subject-token']
 
     def url_for(self, attr=None, filter_value=None,
                 service_type='kv-storage', endpoint_type='public'):
@@ -126,7 +128,7 @@ class ServiceCatalogV3(object):
         return matching_endpoints[0]['url']
 
 
-class HTTPClient(httplib2.Http):
+class HTTPClient(object):
     """Handles the REST calls and responses, include authn."""
 
     USER_AGENT = 'python-magnetodbclient'
@@ -139,7 +141,6 @@ class HTTPClient(httplib2.Http):
                  service_type='kv-storage', domain_id='default',
                  domain_name='Default',
                  **kwargs):
-        super(HTTPClient, self).__init__(timeout=timeout, ca_certs=ca_cert)
 
         self.username = username
         self.tenant_name = tenant_name
@@ -161,52 +162,83 @@ class HTTPClient(httplib2.Http):
         self.project_name = self.tenant_name
         self.project_id = self.tenant_id
 
-        # httplib2 overrides
-        self.disable_ssl_certificate_validation = insecure
+        self.times = []
 
-    def _cs_request(self, *args, **kwargs):
-        kargs = {}
-        kargs.setdefault('headers', kwargs.get('headers', {}))
-        kargs['headers']['User-Agent'] = self.USER_AGENT
-
-        if 'content_type' in kwargs:
-            kargs['headers']['Content-Type'] = kwargs['content_type']
-            kargs['headers']['Accept'] = kwargs['content_type']
+        if insecure:
+            self.verify_cert = False
         else:
-            kargs['headers']['Content-Type'] = self.content_type
-            kargs['headers']['Accept'] = self.content_type
+            self.verify_cert = ca_cert if ca_cert else True
+
+    def request(self, url, method, **kwargs):
+        kwargs.setdefault('headers', kwargs.get('headers', {}))
+        kwargs['headers']['User-Agent'] = self.USER_AGENT
+        kwargs['headers']['Accept'] = 'application/json'
+
+        utils.http_log_req(_logger, (url, method), kwargs)
 
         if 'body' in kwargs:
-            kargs['body'] = kwargs['body']
-        args = utils.safe_encode_list(args)
-        kargs = utils.safe_encode_dict(kargs)
+            kwargs['headers']['Content-Type'] = 'application/json'
+            kwargs['data'] = kwargs['body']
+            del kwargs['body']
 
-        if self.log_credentials:
-            log_kargs = kargs
+        resp = requests.request(
+            method,
+            url,
+            verify=self.verify_cert,
+            **kwargs)
+        utils.http_log_resp(_logger, resp)
+
+        if resp.text:
+            # TODO(dtroyer): verify the note below in a requests context
+            # NOTE(alaski): Because force_exceptions_to_status_code=True
+            # httplib2 returns a connection refused event as a 400 response.
+            # To determine if it is a bad request or refused connection we need
+            # to check the body.  httplib2 tests check for 'Connection refused'
+            # or 'actively refused' in the body, so that's what we'll do.
+            if resp.status_code == 400:
+                if ('Connection refused' in resp.text or
+                    'actively refused' in resp.text):
+                    raise exceptions.ConnectionRefused(resp.text)
+            try:
+                body = json.loads(resp.text)
+            except ValueError:
+                pass
+                body = None
         else:
-            log_kargs = self._strip_credentials(kargs)
+            body = None
 
-        utils.http_log_req(_logger, args, log_kargs)
-        try:
-            resp, body = self.request(*args, **kargs)
-        except httplib2.SSLHandshakeError as e:
-            raise exceptions.SslCertificateValidationError(reason=e)
-        except Exception as e:
-            # Wrap the low-level connection error (socket timeout, redirect
-            # limit, decompression error, etc) into our custom high-level
-            # connection exception (it is excepted in the upper layers of code)
-            _logger.debug("throwing ConnectionFailed : %s", e)
-            raise exceptions.ConnectionFailed(reason=e)
-        finally:
-            # Temporary Fix for gate failures. RPC calls and HTTP requests
-            # seem to be stepping on each other resulting in bogus fd's being
-            # picked up for making http requests
-            self.connections.clear()
-        utils.http_log_resp(_logger, resp, body)
-        status_code = self.get_status_code(resp)
-        if status_code == 401:
-            raise exceptions.Unauthorized(message=body)
+        if resp.status_code >= 400:
+            raise exceptions.from_response(resp, body, url)
+
         return resp, body
+
+    def _time_request(self, url, method, **kwargs):
+        start_time = time.time()
+        resp, body = self.request(url, method, **kwargs)
+        self.times.append(("%s %s" % (method, url),
+                           start_time, time.time()))
+        return resp, body
+
+    def _cs_request(self, url, method, **kwargs):
+        # Perform the request once. If we get a 401 back then it
+        # might be because the auth token expired, so try to
+        # re-authenticate and try again. If it still fails, bail.
+        try:
+            kwargs.setdefault('headers', {})['X-Auth-Token'] = self.auth_token
+            if self.project_id:
+                kwargs['headers']['X-Auth-Project-Id'] = self.project_id
+
+            resp, body = self._time_request(url, method, **kwargs)
+            return resp, body
+        except exceptions.Unauthorized as ex:
+            try:
+                self.authenticate()
+                kwargs['headers']['X-Auth-Token'] = self.auth_token
+                resp, body = self._time_request(self.management_url + url,
+                                                method, **kwargs)
+                return resp, body
+            except exceptions.Unauthorized:
+                raise ex
 
     def _strip_credentials(self, kwargs):
         if kwargs.get('body') and self.password:
@@ -305,11 +337,6 @@ class HTTPClient(httplib2.Http):
         resp, body = self._cs_request(req_url, 'POST',
                                       headers=headers, body=body)
 
-        if body:
-            try:
-                body = json.loads(body)
-            except ValueError:
-                pass
         self._extract_service_catalog_v3(resp, body)
 
     def _authenticate_keystone(self):
@@ -330,24 +357,11 @@ class HTTPClient(httplib2.Http):
         token_url = self.auth_url + "/tokens"
 
         # Make sure we follow redirects when trying to reach Keystone
-        tmp_follow_all_redirects = self.follow_all_redirects
-        self.follow_all_redirects = True
-        try:
-            resp, resp_body = self._cs_request(token_url, "POST",
-                                               body=json.dumps(body),
-                                               content_type="application/json")
-        finally:
-            self.follow_all_redirects = tmp_follow_all_redirects
+        resp, resp_body = self._cs_request(token_url, "POST",
+                                           body=json.dumps(body))
         status_code = self.get_status_code(resp)
         if status_code != 200:
             raise exceptions.Unauthorized(message=resp_body)
-        if resp_body:
-            try:
-                resp_body = json.loads(resp_body)
-            except ValueError:
-                pass
-        else:
-            resp_body = None
         self._extract_service_catalog(resp_body)
 
     def _authenticate_noauth(self):
@@ -410,4 +424,4 @@ class HTTPClient(httplib2.Http):
         if hasattr(response, 'status_int'):
             return response.status_int
         else:
-            return response.status
+            return response.status_code
