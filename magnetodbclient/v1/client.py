@@ -196,15 +196,7 @@ class Client(object):
     def _handle_fault_response(self, status_code, response_body):
         # Create exception with HTTP status code and message
         _logger.debug(_("Error message: %s"), response_body)
-        # Add deserialized error message to exception arguments
-        try:
-            des_error_body = self.deserialize(response_body, status_code)
-        except Exception:
-            # If unable to deserialized body it is probably not a
-            # MagnetoDB error
-            des_error_body = {'message': response_body}
-        # Raise the appropriate exception
-        exception_handler_v1(status_code, des_error_body)
+        exception_handler_v1(status_code, response_body)
 
     def _check_uri_length(self, action):
         uri_len = len(self.httpclient.endpoint_url) + len(action)
@@ -229,7 +221,7 @@ class Client(object):
                            httplib.CREATED,
                            httplib.ACCEPTED,
                            httplib.NO_CONTENT):
-            return self.deserialize(replybody, status_code)
+            return replybody
         else:
             if not replybody:
                 replybody = resp.reason
@@ -247,7 +239,7 @@ class Client(object):
         if hasattr(response, 'status_int'):
             return response.status_int
         else:
-            return response.status
+            return response.status_code
 
     def serialize(self, data):
         """Serializes a dictionary into either xml or json.
@@ -262,13 +254,6 @@ class Client(object):
         else:
             raise Exception(_("Unable to serialize object of type = '%s'") %
                             type(data))
-
-    def deserialize(self, data, status_code):
-        """Deserializes an xml or json string into a dictionary."""
-        if status_code == 204:
-            return data
-        return serializer.Serializer().deserialize(
-            data, self.content_type)['body']
 
     def retry_request(self, method, action, body=None,
                       headers=None, params=None):

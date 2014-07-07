@@ -179,3 +179,41 @@ class UnsupportedVersion(MagnetoDBCLIError):
 class MagnetoDBClientNoUniqueMatch(MagnetoDBCLIError):
     message = _("Multiple %(resource)s matches found for name '%(name)s',"
                 " use an ID to be more specific.")
+
+
+def from_response(response, body, url, method=None):
+    """
+    Return an instance of an ClientException or subclass
+    based on an requests response.
+
+    Usage::
+
+        resp, body = requests.request(...)
+        if resp.status_code != 200:
+            raise exception_from_response(resp, rest.text)
+    """
+    kwargs = {
+        'http_status': response.status_code,
+        'method': method,
+        'url': url,
+        'request_id': None,
+    }
+
+    if response.headers:
+        kwargs['request_id'] = response.headers.get('x-compute-request-id')
+
+        if 'retry-after' in response.headers:
+            kwargs['retry_after'] = response.headers.get('retry-after')
+
+    if body:
+        message = "n/a"
+
+        if hasattr(body, 'keys'):
+            error = body['error']
+            message = error.get('message')
+
+        kwargs['message'] = message
+
+    cls = HTTP_EXCEPTION_MAP.get(response.status_code,
+                                 MagnetoDBClientException)
+    return cls(**kwargs)
