@@ -176,17 +176,17 @@ def http_log_req(_logger, args, kwargs):
     _logger.debug(_("\nREQ: %s\n"), "".join(string_parts))
 
 
-def http_log_resp(_logger, resp, body):
-    if not _logger.isEnabledFor(logging.DEBUG):
-        return
-    _logger.debug(_("RESP:%(resp)s %(body)s\n"), {'resp': resp, 'body': body})
-
+def http_log_resp(_logger, resp):
+    _logger.debug(
+        "RESP: [%s] %s\nRESP BODY: %s\n",
+        resp.status_code,
+        resp.headers,
+        resp.text)
 
 def _safe_encode_without_obj(data):
     if isinstance(data, basestring):
         return strutils.safe_encode(data)
     return data
-
 
 def safe_encode_list(data):
     return map(_safe_encode_without_obj, data)
