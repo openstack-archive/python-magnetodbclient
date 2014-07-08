@@ -1,0 +1,9 @@
+Verified+2: Jenkins
+Code-Review+2: Ilya Sviridov <isviridov@mirantis.com>
+Workflow+1: Ilya Sviridov <isviridov@mirantis.com>
+Code-Review+2: Illia Khudoshyn <ikhudoshyn@mirantis.com>
+Submitted-by: Jenkins
+Submitted-at: Tue, 08 Jul 2014 14:24:51 +0000
+Reviewed-on: https://review.openstack.org/105439
+Project: stackforge/python-magnetodbclient
+Branch: refs/heads/master
