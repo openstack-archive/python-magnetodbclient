@@ -38,6 +38,7 @@ from magnetodbclient.openstack.common import strutils
 from magnetodbclient.version import __version__
 
 
+API_NAME = 'keyvalue'
 VERSION = '1'
 MAGNETODB_API_VERSION = '1'
 
@@ -124,12 +125,12 @@ class MagnetoDBShell(app.App):
     DEBUG_MESSAGE_FORMAT = '%(levelname)s: %(name)s %(message)s'
     log = logging.getLogger(__name__)
 
-    def __init__(self, apiversion):
+    def __init__(self, apiversion, api_name, commands):
         super(MagnetoDBShell, self).__init__(
             description=__doc__.strip(),
             version=VERSION,
             command_manager=commandmanager.CommandManager('magnetodb.cli'), )
-        self.commands = COMMANDS
+        self.commands = commands
         for k, v in self.commands[apiversion].items():
             self.command_manager.add_command(k, v)
 
@@ -137,6 +138,7 @@ class MagnetoDBShell(app.App):
         # password flow auth
         self.auth_client = None
         self.api_version = apiversion
+        self.api_name = api_name
 
     def build_option_parser(self, description, version):
         """Return an argparse option parser for this application.
@@ -240,11 +242,6 @@ class MagnetoDBShell(app.App):
             help=argparse.SUPPRESS)
 
         parser.add_argument(
-            '--service-type', metavar='<service-type>',
-            default=env('OS_KEYVALUE_SERVICE_TYPE', default='kv-storage'),
-            help=_('Defaults to env[OS_KEYVALUE_SERVICE_TYPE].'))
-
-        parser.add_argument(
             '--endpoint-type', metavar='<endpoint-type>',
             default=env('OS_ENDPOINT_TYPE', default='publicURL'),
             help=_('Defaults to env[OS_ENDPOINT_TYPE] or publicURL.'))
@@ -274,7 +271,14 @@ class MagnetoDBShell(app.App):
                    "not be verified against any certificate authorities. "
                    "This option should be used with caution."))
 
+        self._add_specific_args(parser)
         return parser
+
+    def _add_specific_args(self, parser):
+        parser.add_argument(
+            '--service-type', metavar='<service-type>',
+            default=env('OS_KEYVALUE_SERVICE_TYPE', default='kv-storage'),
+            help=_('Defaults to env[OS_KEYVALUE_SERVICE_TYPE].'))
 
     def _bash_completion(self):
         """Prints all of the commands and options for bash-completion."""
@@ -434,6 +438,7 @@ class MagnetoDBShell(app.App):
             password=self.options.os_password,
             region_name=self.options.os_region_name,
             api_version=self.api_version,
+            api_name=self.api_name,
             auth_strategy=self.options.os_auth_strategy,
             service_type=self.options.service_type,
             endpoint_type=self.options.endpoint_type,
@@ -451,7 +456,7 @@ class MagnetoDBShell(app.App):
 
         super(MagnetoDBShell, self).initialize_app(argv)
 
-        self.api_version = {'keyvalue': self.api_version}
+        self.api_version = {self.api_name: self.api_version}
 
         # If the user is not asking for help, make sure they
         # have given us auth.
@@ -492,7 +497,7 @@ class MagnetoDBShell(app.App):
 
 def main(argv=sys.argv[1:]):
     try:
-        return MagnetoDBShell(MAGNETODB_API_VERSION).run(
+        return MagnetoDBShell(MAGNETODB_API_VERSION, API_NAME, COMMANDS).run(
             map(strutils.safe_decode, argv))
     except exc.MagnetoDBClientException:
         return 1
