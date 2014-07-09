@@ -218,3 +218,40 @@ class BatchGet(magnetodbv1.ListCommand):
                 output_list.append({"table_name": table_name,
                                     "item": item})
         return output_list
+
+
+class BulkLoad(magnetodbv1.ListCommand):
+    """Bulk load command."""
+
+    resource_path = ('responses',)
+    method = 'upload'
+    required_args = ('request_file',)
+    log = logging.getLogger(__name__ + '.BulkLoad')
+    success_message = _("Responses:")
+    list_columns = ['Table Name', 'Item']
+
+    def add_known_arguments(self, parser):
+        parser.add_argument(
+            'name', metavar='TABLE_NAME',
+            help=_('Name of table to load data'))
+        parser.add_argument(
+            '--request-file', metavar='FILE',
+            help=_('File that contains data to load in table'))
+
+    def call_server(self, magnetodb_client, name, parsed_args, body):
+        obj_shower = getattr(magnetodb_client, self.method)
+        with open(parsed_args.request_file) as f:
+            data = obj_shower(parsed_args.name, f)
+        return data
+
+    def _get_info(self, data, parsed_args):
+        data = super(BatchGet, self)._get_info(data, parsed_args)
+        if not data:
+            self.success_message = ""
+            return data
+        output_list = []
+        for table_name, items in data.iteritems():
+            for item in items:
+                output_list.append({"table_name": table_name,
+                                    "item": item})
+        return output_list

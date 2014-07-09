@@ -93,7 +93,7 @@ def get_client_class(api_name, version, version_map):
     :rtype: a client class for the requested API version
     """
     try:
-        client_path = version_map[str(version)]
+        client_path = version_map[api_name][str(version)]
     except (KeyError, ValueError):
         msg = _("Invalid %(api_name)s client version '%(version)s'. must be "
                 "one of: %(map_keys)s")
