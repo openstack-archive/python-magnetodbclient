@@ -85,109 +85,14 @@ def exception_handler_v1(status_code, error_content):
                                               message=msg)
 
 
-class Client(object):
-    """Client for the OpenStack MagnetoDB v1 API.
-
-    :param string username: Username for authentication. (optional)
-    :param string password: Password for authentication. (optional)
-    :param string token: Token for authentication. (optional)
-    :param string tenant_name: Tenant name. (optional)
-    :param string tenant_id: Tenant id. (optional)
-    :param string auth_url: Keystone service endpoint for authorization.
-    :param string service_type: Keyvalue service type to pull from the
-                                keystone catalog (e.g. 'keyvalue') (optional)
-    :param string endpoint_type: Keyvalue service endpoint type to pull from
-                                 the keystone catalog (e.g. 'publicURL',
-                                 'internalURL', or 'adminURL') (optional)
-    :param string region_name: Name of a region to select when choosing an
-                               endpoint from the service catalog.
-    :param string endpoint_url: A user-supplied endpoint URL for the magnetodb
-                            service.  Lazy-authentication is possible for API
-                            service calls if endpoint is set at
-                            instantiation.(optional)
-    :param integer timeout: Allows customization of the timeout for client
-                            http requests. (optional)
-    :param bool insecure: SSL certificate validation. (optional)
-    :param string ca_cert: SSL CA bundle file to use. (optional)
-
-    Example::
-
-        from magnetodbclient.v1 import client
-        magnetodb = client.Client(username=USER,
-                                  password=PASS,
-                                  tenant_name=TENANT_NAME,
-                                  auth_url=KEYSTONE_URL)
-
-        tables = magnetodb.list_tables()
-        ...
-
-    """
-    base_path = "/data"
-    tables_path = base_path + "/tables"
-    table_path = base_path + "/tables/%s"
-    put_item_path = table_path + "/put_item"
-    update_item_path = table_path + "/update_item"
-    delete_item_path = table_path + "/delete_item"
-    get_item_path = table_path + "/get_item"
-    query_path = table_path + "/query"
-    scan_path = table_path + "/scan"
-    batch_write_item_path = base_path + "/batch_write_item"
-    batch_get_item_path = base_path + "/batch_get_item"
+class ClientBase(object):
 
     # 8192 Is the default max URI len for eventlet.wsgi.server
     MAX_URI_LEN = 8192
 
-    def create_table(self, request_body):
-        """Create table."""
-        return self.post(self.tables_path, request_body)
-
-    def delete_table(self, table_name):
-        """Delete the specified table."""
-        return self.delete(self.table_path % table_name)
-
-    def list_tables(self, **params):
-        """List tables."""
-        return self.get(self.tables_path, params=params)
-
-    def describe_table(self, table_name):
-        """Describe the specified table."""
-        return self.get(self.table_path % table_name)
-
-    def put_item(self, table_name, request_body):
-        """Put item to the specified table."""
-        return self.post(self.put_item_path % table_name, request_body)
-
-    def update_item(self, table_name, request_body):
-        """Update item."""
-        return self.post(self.update_item_path % table_name, request_body)
-
-    def delete_item(self, table_name, request_body):
-        """Delete item."""
-        return self.post(self.delete_item_path % table_name, request_body)
-
-    def get_item(self, table_name, request_body):
-        """Get item."""
-        return self.post(self.get_item_path % table_name, request_body)
-
-    def query(self, table_name, request_body):
-        """Query the specified table."""
-        return self.post(self.query_path % table_name, request_body)
-
-    def scan(self, table_name, request_body):
-        """Scan the specified table."""
-        return self.post(self.scan_path % table_name, request_body)
-
-    def batch_write_item(self, request_items):
-        """Batch write item."""
-        return self.post(self.batch_write_item_path, request_items)
-
-    def batch_get_item(self, request_items):
-        """Batch get item."""
-        return self.post(self.batch_get_item_path, request_items)
-
     def __init__(self, **kwargs):
         """Initialize a new client for the MagnetoDB v1 API."""
-        super(Client, self).__init__()
+        super(ClientBase, self).__init__()
         self.httpclient = client.HTTPClient(**kwargs)
         self.content_type = 'application/json'
         self.retries = 0
@@ -212,7 +117,7 @@ class Client(object):
         self.httpclient.authenticate_and_fetch_endpoint_url()
         self._check_uri_length(action)
 
-        if body:
+        if body and not isinstance(body, file):
             body = self.serialize(body)
         self.httpclient.content_type = self.content_type
         resp, replybody = self.httpclient.do_request(action, method, body=body)
@@ -321,3 +226,114 @@ class Client(object):
                         break
             except KeyError:
                 break
+
+
+class Client(ClientBase):
+    """Client for the OpenStack MagnetoDB v1 API.
+
+    :param string username: Username for authentication. (optional)
+    :param string password: Password for authentication. (optional)
+    :param string token: Token for authentication. (optional)
+    :param string tenant_name: Tenant name. (optional)
+    :param string tenant_id: Tenant id. (optional)
+    :param string auth_url: Keystone service endpoint for authorization.
+    :param string service_type: Keyvalue service type to pull from the
+                                keystone catalog (e.g. 'keyvalue') (optional)
+    :param string endpoint_type: Keyvalue service endpoint type to pull from
+                                 the keystone catalog (e.g. 'publicURL',
+                                 'internalURL', or 'adminURL') (optional)
+    :param string region_name: Name of a region to select when choosing an
+                               endpoint from the service catalog.
+    :param string endpoint_url: A user-supplied endpoint URL for the magnetodb
+                            service.  Lazy-authentication is possible for API
+                            service calls if endpoint is set at
+                            instantiation.(optional)
+    :param integer timeout: Allows customization of the timeout for client
+                            http requests. (optional)
+    :param bool insecure: SSL certificate validation. (optional)
+    :param string ca_cert: SSL CA bundle file to use. (optional)
+
+    Example::
+
+        from magnetodbclient.v1 import client
+        magnetodb = client.Client(username=USER,
+                                  password=PASS,
+                                  tenant_name=TENANT_NAME,
+                                  auth_url=KEYSTONE_URL)
+
+        tables = magnetodb.list_tables()
+        ...
+
+    """
+
+    base_path = "/data"
+    tables_path = base_path + "/tables"
+    table_path = base_path + "/tables/%s"
+    put_item_path = table_path + "/put_item"
+    update_item_path = table_path + "/update_item"
+    delete_item_path = table_path + "/delete_item"
+    get_item_path = table_path + "/get_item"
+    query_path = table_path + "/query"
+    scan_path = table_path + "/scan"
+    batch_write_item_path = base_path + "/batch_write_item"
+    batch_get_item_path = base_path + "/batch_get_item"
+
+    def create_table(self, request_body):
+        """Create table."""
+        return self.post(self.tables_path, request_body)
+
+    def delete_table(self, table_name):
+        """Delete the specified table."""
+        return self.delete(self.table_path % table_name)
+
+    def list_tables(self, **params):
+        """List tables."""
+        return self.get(self.tables_path, params=params)
+
+    def describe_table(self, table_name):
+        """Describe the specified table."""
+        return self.get(self.table_path % table_name)
+
+    def put_item(self, table_name, request_body):
+        """Put item to the specified table."""
+        return self.post(self.put_item_path % table_name, request_body)
+
+    def update_item(self, table_name, request_body):
+        """Update item."""
+        return self.post(self.update_item_path % table_name, request_body)
+
+    def delete_item(self, table_name, request_body):
+        """Delete item."""
+        return self.post(self.delete_item_path % table_name, request_body)
+
+    def get_item(self, table_name, request_body):
+        """Get item."""
+        return self.post(self.get_item_path % table_name, request_body)
+
+    def query(self, table_name, request_body):
+        """Query the specified table."""
+        return self.post(self.query_path % table_name, request_body)
+
+    def scan(self, table_name, request_body):
+        """Scan the specified table."""
+        return self.post(self.scan_path % table_name, request_body)
+
+    def batch_write_item(self, request_items):
+        """Batch write item."""
+        return self.post(self.batch_write_item_path, request_items)
+
+    def batch_get_item(self, request_items):
+        """Batch get item."""
+        return self.post(self.batch_get_item_path, request_items)
+
+
+class StreamingClient(ClientBase):
+    """Client for the OpenStack MagnetoDB v1 streaming API.
+    """
+    base_path = "/data"
+    table_path = base_path + "/tables/%s"
+    bulk_load_path = table_path + "/bulk_load"
+
+    def upload(self, table_name, body):
+        """Bulk load."""
+        return self.post(self.bulk_load_path % table_name, body)
