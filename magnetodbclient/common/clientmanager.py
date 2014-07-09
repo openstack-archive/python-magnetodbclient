@@ -53,6 +53,7 @@ class ClientManager(object):
                  username=None, password=None,
                  region_name=None,
                  api_version=None,
+                 api_name=None,
                  auth_strategy=None,
                  insecure=False,
                  ca_cert=None,
@@ -74,6 +75,7 @@ class ClientManager(object):
         self._password = password
         self._region_name = region_name
         self._api_version = api_version
+        self._api_name = api_name
         self._service_catalog = None
         self._auth_strategy = auth_strategy
         self._insecure = insecure
