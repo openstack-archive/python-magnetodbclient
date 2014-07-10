@@ -19,24 +19,33 @@ from magnetodbclient.common import utils
 from magnetodbclient.openstack.common.gettextutils import _
 
 
-API_NAME = 'keyvalue'
 API_VERSIONS = {
     '1': 'magnetodbclient.v1.client.Client',
+}
+
+STREAMING_API_VERSIONS = {
+    '1': 'magnetodbclient.v1.streaming_client.StreamingClient',
+}
+
+API = {
+    'keyvalue': API_VERSIONS,
+    'kv-streaming': STREAMING_API_VERSIONS,
 }
 
 
 def make_client(instance):
     """Returns an magnetodb client.
     """
+    api_name = instance._api_name
     magnetodb_client = utils.get_client_class(
-        API_NAME,
-        instance._api_version[API_NAME],
-        API_VERSIONS,
+        instance._api_name,
+        instance._api_version[api_name],
+        API,
     )
     instance.initialize()
     url = instance._url
     url = url.rstrip("/")
-    if '1' == instance._api_version[API_NAME]:
+    if '1' == instance._api_version[api_name]:
         client = magnetodb_client(username=instance._username,
                                   tenant_name=instance._tenant_name,
                                   password=instance._password,
@@ -51,15 +60,4 @@ def make_client(instance):
     else:
         raise exceptions.UnsupportedVersion(_("API version %s is not "
                                               "supported") %
-                                            instance._api_version[API_NAME])
-
-
-def Client(api_version, *args, **kwargs):
-    """Return an magnetodb client.
-    """
-    magnetodb_client = utils.get_client_class(
-        API_NAME,
-        api_version,
-        API_VERSIONS,
-    )
-    return magnetodb_client(*args, **kwargs)
+                                            instance._api_version[api_name])
