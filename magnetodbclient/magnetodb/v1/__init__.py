@@ -541,7 +541,12 @@ class ListCommand(MagnetoDBCommand, lister.Lister):
         pass
 
     def setup_columns(self, info, parsed_args):
-        _columns = len(info) > 0 and sorted(info[0].keys()) or []
+        _columns = set()
+        if len(info) > 0:
+            for item in info:
+                _columns = _columns.union(item.keys())
+        else:
+            _columns = []
         if not _columns:
             # clean the parsed_args.columns so that cliff will not break
             parsed_args.columns = []
