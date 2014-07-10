@@ -185,12 +185,6 @@ class HTTPClient(object):
         utils.http_log_resp(_logger, resp)
 
         if resp.text:
-            # TODO(dtroyer): verify the note below in a requests context
-            # NOTE(alaski): Because force_exceptions_to_status_code=True
-            # httplib2 returns a connection refused event as a 400 response.
-            # To determine if it is a bad request or refused connection we need
-            # to check the body.  httplib2 tests check for 'Connection refused'
-            # or 'actively refused' in the body, so that's what we'll do.
             if resp.status_code == 400:
                 if ('Connection refused' in resp.text or
                     'actively refused' in resp.text):
