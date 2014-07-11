@@ -1,4 +1,5 @@
-# Copyright (C) 2014 Symantec Corp.
+# Copyright 2014 Symantec Corporation
+# Copyright 2012 OpenStack Foundation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -122,6 +123,7 @@ class ShellTest(testtools.TestCase):
         run_subcommand_p = mock.patch.object(magnetodb_shell, 'run_subcommand')
         manager_p.start()
         run_subcommand_p.start()
+        clientmanager.ClientManager.__init__.return_value = None
         self.addCleanup(manager_p.stop)
         self.addCleanup(run_subcommand_p.stop)
         cmdline = ('--os-username test '

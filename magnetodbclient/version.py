@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Hewlett-Packard Development Company, L.P.
+# Copyright 2014 Symantec Corporation
 # All Rights Reserved
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-# @author: Carl Baldwin, Hewlett-Packard
 
 from pbr import version
 
