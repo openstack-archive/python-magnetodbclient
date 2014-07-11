@@ -1,4 +1,4 @@
-# Copyright 2012 OpenStack Foundation.
+# Copyright 2014 Symantec Corporation
 # All Rights Reserved
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -192,7 +192,6 @@ class HTTPClient(object):
             try:
                 body = json.loads(resp.text)
             except ValueError:
-                pass
                 body = None
         else:
             body = None
@@ -224,8 +223,7 @@ class HTTPClient(object):
             try:
                 self.authenticate()
                 kwargs['headers']['X-Auth-Token'] = self.auth_token
-                resp, body = self._time_request(self.management_url + url,
-                                                method, **kwargs)
+                resp, body = self._time_request(url, method, **kwargs)
                 return resp, body
             except exceptions.Unauthorized:
                 raise ex
@@ -254,7 +252,8 @@ class HTTPClient(object):
             kwargs.setdefault('headers', {})
             if self.auth_token is None:
                 self.auth_token = ""
-            kwargs['headers']['X-Auth-Token'] = self.auth_token
+            if self.auth_token:
+                kwargs['headers']['X-Auth-Token'] = self.auth_token
             resp, body = self._cs_request(self.endpoint_url + url, method,
                                           **kwargs)
             return resp, body
@@ -324,8 +323,8 @@ class HTTPClient(object):
 
         headers = {'Content-Type': 'application/json'}
         body = json.dumps(creds)
-        resp, body = self._cs_request(req_url, 'POST',
-                                      headers=headers, body=body)
+        resp, body = self._time_request(req_url, 'POST',
+                                        headers=headers, body=body)
 
         self._extract_service_catalog_v3(resp, body)
 
@@ -347,8 +346,9 @@ class HTTPClient(object):
         token_url = self.auth_url + "/tokens"
 
         # Make sure we follow redirects when trying to reach Keystone
-        resp, resp_body = self._cs_request(token_url, "POST",
-                                           body=json.dumps(body))
+        resp, resp_body = self._time_request(token_url, "POST",
+                                             headers={},
+                                             body=json.dumps(body))
         status_code = self.get_status_code(resp)
         if status_code != 200:
             raise exceptions.Unauthorized(message=resp_body)
@@ -363,6 +363,8 @@ class HTTPClient(object):
 
     def authenticate(self):
         if self.auth_strategy == 'keystone':
+            if not self.auth_url:
+                raise exceptions.NoAuthURLProvided()
             auth_api = self.auth_url.split('/')[-1]
             if auth_api == 'v2.0':
                 self._authenticate_keystone()
@@ -388,7 +390,6 @@ class HTTPClient(object):
             self.authenticate()
             return self.endpoint_url
 
-        body = json.loads(body)
         for endpoint in body.get('endpoints', []):
             if (endpoint['type'] == 'kv-storage' and
                 endpoint.get('region') == self.region_name):
@@ -406,12 +407,5 @@ class HTTPClient(object):
                 'endpoint_url': self.endpoint_url}
 
     def get_status_code(self, response):
-        """Returns the integer status code from the response.
-
-        Either a Webob.Response (used in testing) or httplib.Response
-        is returned.
-        """
-        if hasattr(response, 'status_int'):
-            return response.status_int
-        else:
-            return response.status_code
+        """Returns the integer status code from the response."""
+        return response.status_code
