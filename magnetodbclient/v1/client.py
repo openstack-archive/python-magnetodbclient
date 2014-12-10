@@ -60,17 +60,16 @@ class Client(client_base.ClientBase):
 
     """
 
-    base_path = "/data"
-    tables_path = base_path + "/tables"
-    table_path = base_path + "/tables/%s"
+    tables_path = "/tables"
+    table_path = "/tables/%s"
     put_item_path = table_path + "/put_item"
     update_item_path = table_path + "/update_item"
     delete_item_path = table_path + "/delete_item"
     get_item_path = table_path + "/get_item"
     query_path = table_path + "/query"
     scan_path = table_path + "/scan"
-    batch_write_item_path = base_path + "/batch_write_item"
-    batch_get_item_path = base_path + "/batch_get_item"
+    batch_write_item_path = "/batch_write_item"
+    batch_get_item_path = "/batch_get_item"
 
     def create_table(self, request_body):
         """Create table."""
