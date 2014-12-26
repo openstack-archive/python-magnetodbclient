@@ -23,10 +23,11 @@ from __future__ import print_function
 
 import sys
 
+from oslo_utils import encodeutils
+
 from magnetodbclient.common import exceptions as exc
 from magnetodbclient.magnetodb.v1 import item
 from magnetodbclient.openstack.common.gettextutils import _
-from magnetodbclient.openstack.common import strutils
 from magnetodbclient import shell
 
 
@@ -55,7 +56,7 @@ class MagnetoDBStreamingShell(shell.MagnetoDBShell):
 def main(argv=sys.argv[1:]):
     try:
         return MagnetoDBStreamingShell(API_VERSION, API_NAME, COMMANDS).run(
-            map(strutils.safe_decode, argv))
+            map(encodeutils.safe_decode, argv))
     except exc.MagnetoDBClientException:
         return 1
     except Exception as e:
