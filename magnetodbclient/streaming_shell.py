@@ -23,10 +23,11 @@ from __future__ import print_function
 
 import sys
 
+from oslo_utils import strutils
+
 from magnetodbclient.common import exceptions as exc
 from magnetodbclient.magnetodb.v1 import item
 from magnetodbclient.openstack.common.gettextutils import _
-from magnetodbclient.openstack.common import strutils
 from magnetodbclient import shell
 
 
