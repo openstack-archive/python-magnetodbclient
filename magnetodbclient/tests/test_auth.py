@@ -174,7 +174,7 @@ class CLITestAuthKeystone(testtools.TestCase):
                 mock.call(
                     ENDPOINT_URL + '/resource', 'GET',
                     headers={'X-Auth-Token': TOKEN})
-            ])
+            ], any_order=True)
 
     def test_refresh_token_no_auth_url(self):
         with mock.patch.object(self.client, "request"):
@@ -274,7 +274,7 @@ class CLITestAuthKeystone(testtools.TestCase):
                           headers={'X-Auth-Token': TOKEN}),
                 mock.call(ENDPOINT_URL + '/resource', 'GET',
                           headers={'X-Auth-Token': TOKEN})
-            ])
+            ], any_order=True)
 
     def test_endpoint_type(self):
         resources = copy.deepcopy(KS_TOKEN_RESULT)
