@@ -16,9 +16,10 @@
 
 import logging
 
+from oslo_serialization import jsonutils
+
 from magnetodbclient.common import exceptions as exception
 from magnetodbclient.openstack.common.gettextutils import _
-from magnetodbclient.openstack.common import jsonutils
 
 LOG = logging.getLogger(__name__)
 
