@@ -21,11 +21,11 @@ import datetime
 import json
 import logging
 import os
+from oslo.utils import strutils
 import sys
 
 from magnetodbclient.common import _
 from magnetodbclient.common import exceptions
-from magnetodbclient.openstack.common import strutils
 
 
 def env(*vars, **kwargs):
