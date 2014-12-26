@@ -6,3 +6,5 @@ iso8601>=0.1.9
 simplejson>=2.0.9
 six>=1.5.2
 Babel>=1.3
+oslo.serialization>=1.2.0
+oslo.utils>=1.2.0

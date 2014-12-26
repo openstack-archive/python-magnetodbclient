@@ -19,12 +19,12 @@ import copy
 import uuid
 
 import mock
+from oslo_serialization import jsonutils
 import requests
 import testtools
 
 from magnetodbclient import client
 from magnetodbclient.common import exceptions
-from magnetodbclient.openstack.common import jsonutils
 
 
 USERNAME = 'testuser'

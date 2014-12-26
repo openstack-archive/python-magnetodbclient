@@ -28,6 +28,7 @@ import sys
 
 from cliff import app
 from cliff import commandmanager
+from oslo_utils import encodeutils
 
 from magnetodbclient.common import clientmanager
 from magnetodbclient.common import exceptions as exc
@@ -35,7 +36,6 @@ from magnetodbclient.common import utils
 from magnetodbclient.magnetodb.v1 import item
 from magnetodbclient.magnetodb.v1 import table
 from magnetodbclient.openstack.common.gettextutils import _
-from magnetodbclient.openstack.common import strutils
 from magnetodbclient.version import __version__
 
 
@@ -499,7 +499,7 @@ class MagnetoDBShell(app.App):
 def main(argv=sys.argv[1:]):
     try:
         return MagnetoDBShell(MAGNETODB_API_VERSION, API_NAME, COMMANDS).run(
-            map(strutils.safe_decode, argv))
+            map(encodeutils.safe_decode, argv))
     except exc.MagnetoDBClientException:
         return 1
     except Exception as e:

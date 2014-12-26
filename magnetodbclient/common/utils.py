@@ -23,9 +23,10 @@ import logging
 import os
 import sys
 
+from oslo_utils import encodeutils
+
 from magnetodbclient.common import _
 from magnetodbclient.common import exceptions
-from magnetodbclient.openstack.common import strutils
 
 
 def env(*vars, **kwargs):
@@ -180,7 +181,7 @@ def http_log_resp(_logger, resp):
 
 def _safe_encode_without_obj(data):
     if isinstance(data, basestring):
-        return strutils.safe_encode(data)
+        return encodeutils.safe_encode(data)
     return data
 
 

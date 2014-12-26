@@ -115,6 +115,8 @@ class ShellTest(testtools.TestCase):
                          'either --os-url or env[OS_URL]', stderr.strip())
 
     def test_auth(self):
+        env_p = mock.patch.object(os, 'environ', {})
+        env_p.start()
         magnetodb_shell = openstack_shell.MagnetoDBShell(
             '1',
             openstack_shell.API_NAME,
@@ -126,9 +128,11 @@ class ShellTest(testtools.TestCase):
         clientmanager.ClientManager.__init__.return_value = None
         self.addCleanup(manager_p.stop)
         self.addCleanup(run_subcommand_p.stop)
+        self.addCleanup(env_p.stop)
         cmdline = ('--os-username test '
                    '--os-password test '
                    '--os-tenant-name test '
+                   '--os-tenant-id tenant_id '
                    '--os-auth-url http://127.0.0.1:5000/ '
                    '--os-auth-strategy keystone table-list')
         magnetodb_shell.run(cmdline.split())
