@@ -23,9 +23,10 @@ import logging
 import os
 import sys
 
+from oslo_utils import strutils
+
 from magnetodbclient.common import _
 from magnetodbclient.common import exceptions
-from magnetodbclient.openstack.common import strutils
 
 
 def env(*vars, **kwargs):

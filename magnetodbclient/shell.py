@@ -28,6 +28,7 @@ import sys
 
 from cliff import app
 from cliff import commandmanager
+from oslo_utils import strutils
 
 from magnetodbclient.common import clientmanager
 from magnetodbclient.common import exceptions as exc
@@ -35,7 +36,6 @@ from magnetodbclient.common import utils
 from magnetodbclient.magnetodb.v1 import item
 from magnetodbclient.magnetodb.v1 import table
 from magnetodbclient.openstack.common.gettextutils import _
-from magnetodbclient.openstack.common import strutils
 from magnetodbclient.version import __version__
 
 
