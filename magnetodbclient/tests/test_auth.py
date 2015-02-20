@@ -24,6 +24,7 @@ import testtools
 
 from magnetodbclient import client
 from magnetodbclient.common import exceptions
+from magnetodbclient.openstack.common import jsonutils
 
 
 USERNAME = 'testuser'
@@ -102,9 +103,16 @@ class CLITestAuthNoAuth(testtools.TestCase):
 class CLITestAuthKeystone(testtools.TestCase):
 
     # Auth Body expected
-    auth_body = ('{"auth": {"tenantName": "testtenant", '
-                 '"passwordCredentials": '
-                 '{"username": "testuser", "password": "password"}}}')
+    auth_body = {
+        "auth": {
+            "tenantName": "testtenant",
+            "passwordCredentials": {
+                "username": "testuser",
+                "password": "password",
+            }
+        }
+    }
+    auth_body = jsonutils.dumps(auth_body)
 
     def setUp(self):
         """Prepare the test environment."""
@@ -119,6 +127,7 @@ class CLITestAuthKeystone(testtools.TestCase):
         """Test that Client.get_auth_info() works even if client was
            instantiated with predefined token.
         """
+
         client_ = client.HTTPClient(username=USERNAME,
                                     tenant_name=TENANT_NAME,
                                     token=TOKEN,
@@ -204,12 +213,12 @@ class CLITestAuthKeystone(testtools.TestCase):
             self.client.request.side_effect = [(res200, ENDPOINTS_RESULT),
                                                (res200, '')]
             self.client.do_request('/resource', 'GET')
-            self.client.request.assert_has_calls(
-                [mock.call(AUTH_URL + '/tokens/%s/endpoints' % TOKEN, 'GET',
-                           headers={'X-Auth-Token': TOKEN}),
-                 mock.call(ENDPOINT_URL + '/resource', 'GET',
-                           headers={'X-Auth-Token': TOKEN})]
-            )
+            self.client.request.assert_has_calls([
+                mock.call(AUTH_URL + '/tokens/%s/endpoints' % TOKEN, 'GET',
+                          headers={'X-Auth-Token': TOKEN}),
+                mock.call(ENDPOINT_URL + '/resource', 'GET',
+                          headers={'X-Auth-Token': TOKEN})
+            ])
 
     def test_use_given_endpoint_url(self):
         self.client = client.HTTPClient(
