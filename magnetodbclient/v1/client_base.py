@@ -117,7 +117,7 @@ class ClientBase(object):
         self.httpclient.authenticate_and_fetch_endpoint_url()
         self._check_uri_length(action)
 
-        if body and not isinstance(body, file):
+        if body is not None and not isinstance(body, file):
             body = self.serialize(body)
         self.httpclient.content_type = self.content_type
         resp, replybody = self.httpclient.do_request(action, method, body=body)
