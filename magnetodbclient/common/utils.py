@@ -203,8 +203,7 @@ def get_file_contents(fname):
     with open(fname, 'r') as f:
         content = f.read()
     try:
-        body = json.loads(content)
+        return json.loads(content)
     except ValueError:
         msg = _("Error occured while trying to translate JSON")
         raise exceptions.MagnetoDBClientException(message=msg)
-    return body
