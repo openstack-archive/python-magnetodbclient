@@ -1,0 +1,9 @@
+Verified+2: Jenkins
+Code-Review+2: Andrei V. Ostapenko <aostapenko@mirantis.com>
+Code-Review+2: Charles Wang <charles_wang@symantec.com>
+Workflow+1: Charles Wang <charles_wang@symantec.com>
+Submitted-by: Jenkins
+Submitted-at: Sun, 22 Feb 2015 05:00:47 +0000
+Reviewed-on: https://review.openstack.org/144179
+Project: stackforge/python-magnetodbclient
+Branch: refs/heads/master
