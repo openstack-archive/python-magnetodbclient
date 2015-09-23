@@ -1,7 +1,0 @@
-[run]
-branch = True
-source = magnetodbclient
-omit = magnetodbclient/openstack/*,magnetodbclient/tests/*
-
-[report]
-ignore-errors = True
